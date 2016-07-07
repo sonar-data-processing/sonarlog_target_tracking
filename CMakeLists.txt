@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (sonarlog_target_tracking)
 
 include ( "${WORKSPACE_DIR}/base/cmake/Dependencies.cmake"  )
+include ( "${WORKSPACE_DIR}/third_party/cmake/Gnuplot.cmake"  )
 
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -14,7 +15,12 @@ find_package ( Boost COMPONENTS system filesystem program_options unit_test_fram
 find_package ( Eigen3 REQUIRED )
 find_package ( OpenCV REQUIRED )
 
-set ( ${PROJECT_NAME}_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include CACHE INTERNAL "Sonar's log Target Tracking Include Directory" FORCE )
+set (
+    ${PROJECT_NAME}_INCLUDE_DIR
+    ${PROJECT_SOURCE_DIR}/include
+    CACHE PATH "Sonar's log Target Tracking Include Directory"
+    FORCE
+)
 
 file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
 
