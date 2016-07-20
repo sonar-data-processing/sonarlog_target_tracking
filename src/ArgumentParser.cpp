@@ -9,7 +9,7 @@ using namespace boost;
 namespace sonarlog_target_tracking {
 
 ArgumentParser::ArgumentParser()
-    : input_file_("")
+    : input_files_()
     , stream_name_("") {
 }
 
@@ -22,7 +22,7 @@ bool ArgumentParser::run(int argc, char const *argv[]) {
     program_options::options_description desc("create video from sonar scan log");
 
     desc.add_options()
-        ("input-file,i", program_options::value<std::string>()->required(), "the input file path")
+        ("input-files,i", program_options::value<std::vector<std::string> >()->required(), "the input files path")
         ("stream-name,s", program_options::value<std::string>()->default_value("sonar.sonar_scan_samples"), "the stream name")
         ("help,h", "show the command line description");
 
@@ -40,12 +40,14 @@ bool ArgumentParser::run(int argc, char const *argv[]) {
             return false;
         }
 
-        if (vm.count("input-file")) {
-            input_file_ = vm["input-file"].as<std::string>();
-
-            if (!file_exists(input_file_)){
-                std::cerr << "ERROR: input-file not found" << std::endl;
-                return false;
+        if (vm.count("input-files")) {
+            input_files_ = vm["input-files"].as<std::vector<std::string> >();
+            
+            for (size_t i = 0; i < input_files_.size(); i++) {
+                if (!file_exists(input_files_[i])){
+                    std::cerr << "ERROR: input-files not found" << std::endl;
+                    return false;
+                }
             }
         }
 
