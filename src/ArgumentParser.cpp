@@ -24,6 +24,7 @@ bool ArgumentParser::run(int argc, char const *argv[]) {
     desc.add_options()
         ("input-files,i", program_options::value<std::vector<std::string> >()->required(), "the input files path")
         ("stream-name,s", program_options::value<std::string>()->default_value("sonar.sonar_scan_samples"), "the stream name")
+        ("background-files,b", program_options::value<std::vector<std::string> >(), "the background files")
         ("help,h", "show the command line description");
 
     program_options::positional_options_description pd;
@@ -42,9 +43,19 @@ bool ArgumentParser::run(int argc, char const *argv[]) {
 
         if (vm.count("input-files")) {
             input_files_ = vm["input-files"].as<std::vector<std::string> >();
-            
+
             for (size_t i = 0; i < input_files_.size(); i++) {
                 if (!file_exists(input_files_[i])){
+                    std::cerr << "ERROR: input-files not found" << std::endl;
+                    return false;
+                }
+            }
+        }
+
+        if (vm.count("background-files")) {
+            background_files_ = vm["background-files"].as<std::vector<std::string> >();
+            for (size_t i = 0; i < background_files_.size(); i++) {
+                if (!file_exists(background_files_[i])){
                     std::cerr << "ERROR: input-files not found" << std::endl;
                     return false;
                 }

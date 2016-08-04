@@ -24,6 +24,10 @@ public:
         return stream_name_;
     }
 
+    std::vector<std::string> background_files() const {
+        return background_files_;
+    }
+
     bool run(int argc, char const *argv[]);
 
 private:
@@ -32,6 +36,7 @@ private:
     std::string get_filename(std::string file_path);
 
     std::vector<std::string> input_files_;
+    std::vector<std::string> background_files_;
     std::string stream_name_;
     std::string app_name_;
 

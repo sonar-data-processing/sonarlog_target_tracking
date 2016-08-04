@@ -11,6 +11,18 @@ add_project_dependency (sonar_target_tracking ${WORKSPACE_DIR} ${CMAKE_CURRENT_B
 setup_headers ( sonar_target_tracking ${sonar_target_tracking_SOURCE_DIR} )
 setup_headers ( ${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src" )
 
+file (
+    GLOB THIRD_PARTY_HEADERS
+    "${sonar_target_tracking_SOURCE_DIR}/third_party/*.h"
+    "${sonar_target_tracking_SOURCE_DIR}/third_party/*.hpp"
+)
+
+configure_file_list (
+    ${THIRD_PARTY_HEADERS}
+    "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_target_tracking/third_party"
+)
+
+
 include ( FindPkgConfig  )
 include ( BoostTest )
 
@@ -83,13 +95,19 @@ target_link_libraries (
 boost_test_init()
 
 add_boost_test (
-    test_ArgumentParser 
+    test_ArgumentParser
     SOURCES test/test_ArgumentParser.cpp src/ArgumentParser.cpp
     LIBRARIES ${Boost_LIBRARIES}
 )
 
 configure_file (
-    ${PROJECT_SOURCE_DIR}/scripts/example.sh.in
-    ${PROJECT_BINARY_DIR}/scripts/example.sh
+    ${PROJECT_SOURCE_DIR}/scripts/example0.sh.in
+    ${PROJECT_BINARY_DIR}/scripts/example0.sh
+    @ONLY
+)
+
+configure_file (
+    ${PROJECT_SOURCE_DIR}/scripts/example1.sh.in
+    ${PROJECT_BINARY_DIR}/scripts/example1.sh
     @ONLY
 )

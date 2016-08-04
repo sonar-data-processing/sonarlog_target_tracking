@@ -18,6 +18,8 @@ public:
 
     void process_next_sample();
 
+    void process_background_features_from_logfile(const std::string& filename, const std::string& stream_name);
+
     void plot(cv::Mat mat);
 
     base::Plot& plot() {
@@ -35,9 +37,10 @@ private:
     std::auto_ptr<rock_util::LogReader> reader_;
     rock_util::LogStream stream_;
 
-
     static Application *instance_;
     std::auto_ptr<base::Plot> plot_;
+
+    std::vector<double> background_features_;
 };
 
 } /* namespace sonarlog_target_tracking */
