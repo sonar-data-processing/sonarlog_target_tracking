@@ -38,8 +38,14 @@ void Application::process_next_sample() {
 }
 
 void Application::process_logfile() {
+    uint32_t max_samples_log = 999;
+    uint32_t sample_index = 0;
     stream_.reset();
-    while (stream_.current_sample_index() < stream_.total_samples()) process_next_sample();
+
+    while (stream_.current_sample_index() < stream_.total_samples() && sample_index < max_samples_log) {
+        process_next_sample();
+        sample_index++;
+    }
     cv::waitKey();
 }
 
