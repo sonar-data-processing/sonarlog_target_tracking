@@ -103,6 +103,17 @@ target_link_libraries (
 )
 
 add_executable (
+    dft_proc
+    examples/dft_proc.cpp
+    ${SRCS}
+)
+
+target_link_libraries (
+    dft_proc
+    ${LIBS}
+)
+
+add_executable (
     video_generator
     examples/video_generator.cpp
     ${SRCS}
