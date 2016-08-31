@@ -91,6 +91,16 @@ target_link_libraries (
     ${LIBS}
 )
 
+add_executable (
+    convert_to_images
+    examples/convert_to_images.cpp
+    ${SRCS}
+)
+
+target_link_libraries (
+    convert_to_images
+    ${LIBS}
+)
 
 boost_test_init()
 
