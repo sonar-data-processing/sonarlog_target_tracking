@@ -102,6 +102,17 @@ target_link_libraries (
     ${LIBS}
 )
 
+add_executable (
+    video_generator
+    examples/video_generator.cpp
+    ${SRCS}
+)
+
+target_link_libraries (
+    video_generator
+    ${LIBS}
+)
+
 boost_test_init()
 
 add_boost_test (
