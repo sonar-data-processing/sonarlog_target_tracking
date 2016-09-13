@@ -18,8 +18,8 @@ file (
 )
 
 configure_file_list (
-    ${THIRD_PARTY_HEADERS}
-    "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_target_tracking/third_party"
+    INPUT_FILES ${THIRD_PARTY_HEADERS}
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_target_tracking/third_party"
 )
 
 
@@ -121,6 +121,28 @@ add_executable (
 
 target_link_libraries (
     video_generator
+    ${LIBS}
+)
+
+add_executable (
+    sonar_data_structure
+    examples/sonar_data_structure.cpp
+    ${SRCS}
+)
+
+target_link_libraries (
+    sonar_data_structure
+    ${LIBS}
+)
+
+add_executable (
+    nearest_neighbor
+    examples/nearest_neighbor.cpp
+    ${SRCS}
+)
+
+target_link_libraries (
+    nearest_neighbor
     ${LIBS}
 )
 
