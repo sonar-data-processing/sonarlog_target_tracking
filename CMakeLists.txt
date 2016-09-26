@@ -8,7 +8,6 @@ option (COMPILE_FIRST_SAMPLE_PROC OFF)
 option (COMPILE_CONVERT_TO_IMAGES OFF)
 option (COMPILE_DFT_PROC          OFF)
 option (COMPILE_VIDEO_GENERATOR   OFF)
-option (COMPILE_SONAR_DATA        OFF)
 option (COMPILE_NEAREST_NEIGHBOR  OFF)
 option (COMPILE_ROI_EXTRACT       OFF)
 
@@ -150,23 +149,6 @@ if (COMPILE_VIDEO_GENERATOR)
     )
 
 endif(COMPILE_VIDEO_GENERATOR)
-
-if (COMPILE_SONAR_DATA)
-
-    message ( STATUS "Compile sonar_data_structure example")
-
-    add_executable (
-        sonar_data_structure
-        examples/sonar_data_structure.cpp
-        ${SRCS}
-    )
-
-    target_link_libraries (
-        sonar_data_structure
-        ${LIBS}
-    )
-
-endif(COMPILE_SONAR_DATA)
 
 if (COMPILE_NEAREST_NEIGHBOR)
     message ( STATUS "Compile nearest_neighbor example")
