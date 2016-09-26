@@ -4,6 +4,14 @@ project (sonarlog_target_tracking)
 include ( "${WORKSPACE_DIR}/base/cmake/Dependencies.cmake"  )
 include ( "${WORKSPACE_DIR}/third_party/cmake/Gnuplot.cmake"  )
 
+option (COMPILE_FIRST_SAMPLE_PROC OFF)
+option (COMPILE_CONVERT_TO_IMAGES OFF)
+option (COMPILE_DFT_PROC          OFF)
+option (COMPILE_VIDEO_GENERATOR   OFF)
+option (COMPILE_SONAR_DATA        OFF)
+option (COMPILE_NEAREST_NEIGHBOR  OFF)
+option (COMPILE_ROI_EXTRACT       OFF)
+
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (sonar_target_tracking ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -80,71 +88,118 @@ target_link_libraries (
     ${LIBS}
 )
 
-add_executable (
-    first_sample_proc
-    examples/first_sample_proc.cpp
-    ${SRCS}
-)
+if (COMPILE_FIRST_SAMPLE_PROC)
+    message ( STATUS "Compile first_sample_proc example")
 
-target_link_libraries (
-    first_sample_proc
-    ${LIBS}
-)
+    add_executable (
+        first_sample_proc
+        examples/first_sample_proc.cpp
+        ${SRCS}
+    )
 
-add_executable (
-    convert_to_images
-    examples/convert_to_images.cpp
-    ${SRCS}
-)
+    target_link_libraries (
+        first_sample_proc
+        ${LIBS}
+    )
+endif(COMPILE_FIRST_SAMPLE_PROC)
 
-target_link_libraries (
-    convert_to_images
-    ${LIBS}
-)
+if (COMPILE_CONVERT_TO_IMAGES)
+    message ( STATUS "Compile first_sample_proc example")
 
-add_executable (
-    dft_proc
-    examples/dft_proc.cpp
-    ${SRCS}
-)
+    add_executable (
+        convert_to_images
+        examples/convert_to_images.cpp
+        ${SRCS}
+    )
 
-target_link_libraries (
-    dft_proc
-    ${LIBS}
-)
+    target_link_libraries (
+        convert_to_images
+        ${LIBS}
+    )
 
-add_executable (
-    video_generator
-    examples/video_generator.cpp
-    ${SRCS}
-)
+endif(COMPILE_CONVERT_TO_IMAGES)
 
-target_link_libraries (
-    video_generator
-    ${LIBS}
-)
+if (COMPILE_DFT_PROC)
+    message ( STATUS "Compile dft_proc example")
 
-add_executable (
-    sonar_data_structure
-    examples/sonar_data_structure.cpp
-    ${SRCS}
-)
+    add_executable (
+        dft_proc
+        examples/dft_proc.cpp
+        ${SRCS}
+    )
 
-target_link_libraries (
-    sonar_data_structure
-    ${LIBS}
-)
+    target_link_libraries (
+        dft_proc
+        ${LIBS}
+    )
 
-add_executable (
-    nearest_neighbor
-    examples/nearest_neighbor.cpp
-    ${SRCS}
-)
+endif(COMPILE_DFT_PROC)
 
-target_link_libraries (
-    nearest_neighbor
-    ${LIBS}
-)
+if (COMPILE_VIDEO_GENERATOR)
+    message ( STATUS "Compile video_generator example")
+
+    add_executable (
+        video_generator
+        examples/video_generator.cpp
+        ${SRCS}
+    )
+
+    target_link_libraries (
+        video_generator
+        ${LIBS}
+    )
+
+endif(COMPILE_VIDEO_GENERATOR)
+
+if (COMPILE_SONAR_DATA)
+
+    message ( STATUS "Compile sonar_data_structure example")
+
+    add_executable (
+        sonar_data_structure
+        examples/sonar_data_structure.cpp
+        ${SRCS}
+    )
+
+    target_link_libraries (
+        sonar_data_structure
+        ${LIBS}
+    )
+
+endif(COMPILE_SONAR_DATA)
+
+if (COMPILE_NEAREST_NEIGHBOR)
+    message ( STATUS "Compile nearest_neighbor example")
+
+    add_executable (
+        nearest_neighbor
+        examples/nearest_neighbor.cpp
+        ${SRCS}
+    )
+
+    target_link_libraries (
+        nearest_neighbor
+        ${LIBS}
+    )
+
+endif(COMPILE_NEAREST_NEIGHBOR)
+
+if (COMPILE_ROI_EXTRACT)
+
+    message ( STATUS "Compile roi_extract example")
+
+    add_executable (
+        roi_extract
+        examples/roi_extract.cpp
+        ${SRCS}
+    )
+
+    target_link_libraries (
+        roi_extract
+        ${LIBS}
+    )
+
+endif(COMPILE_ROI_EXTRACT)
 
 boost_test_init()
 
