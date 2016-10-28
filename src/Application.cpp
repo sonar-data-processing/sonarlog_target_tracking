@@ -5,11 +5,11 @@
 #include "rock_util/SonarSampleConverter.hpp"
 #include "rock_util/Utilities.hpp"
 #include "sonar_util/Plot.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
+#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/Preprocessing.hpp"
 #include "sonarlog_target_tracking/Application.hpp"
 
-using namespace sonar_target_tracking;
+using namespace sonar_processing;
 
 namespace sonarlog_target_tracking {
 

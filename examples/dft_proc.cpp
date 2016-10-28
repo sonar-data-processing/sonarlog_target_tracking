@@ -2,13 +2,13 @@
 #include <base/samples/Sonar.hpp>
 #include "rock_util/LogReader.hpp"
 #include "rock_util/SonarSampleConverter.hpp"
-#include "sonar_target_tracking/FrequencyDomain.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
+#include "sonar_processing/FrequencyDomain.hpp"
+#include "sonar_processing/Preprocessing.hpp"
+#include "sonar_processing/ImageUtils.hpp"
 #include "base/test_config.h"
 
-using namespace sonar_target_tracking;
-using namespace sonar_target_tracking::frequency_domain;
+using namespace sonar_processing;
+using namespace sonar_processing::frequency_domain;
 
 void central_frequencies_reject(const cv::Size& size, double D, int n, int center_distance, cv::OutputArray dstx, cv::OutputArray dsty) {
     uint32_t w = size.width;

@@ -5,10 +5,10 @@
 #include "rock_util/LogReader.hpp"
 #include "rock_util/SonarSampleConverter.hpp"
 #include "rock_util/Utilities.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/SonarHolder.hpp"
-#include "sonar_target_tracking/PolarCartesianScanner.hpp"
-#include "sonar_target_tracking/BasicOperations.hpp"
+#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/SonarHolder.hpp"
+#include "sonar_processing/PolarCartesianScanner.hpp"
+#include "sonar_processing/BasicOperations.hpp"
 #include "base/test_config.h"
 
 #define SCALE_FACTOR     0.5
@@ -42,7 +42,7 @@ static const uchar KEYS[] = {
     KEY_DOWN
 };
 
-using namespace sonar_target_tracking;
+using namespace sonar_processing;
 
 struct PointComparator {
     virtual bool point_validate(cv::Point2f pt0, cv::Point2f pt1) = 0;
@@ -79,7 +79,7 @@ enum SCANNING_DIRECTION {
 };
 
 struct SonarViewContext {
-    SonarViewContext(sonar_target_tracking::SonarHolder _sonar_holder)
+    SonarViewContext(sonar_processing::SonarHolder _sonar_holder)
         : sel_point0(-1, -1)
         , sel_point1(-1, -1)
         , exit_selection_window(false)
@@ -113,7 +113,7 @@ struct SonarViewContext {
 
     bool exit_selection_window;
 
-    sonar_target_tracking::SonarHolder sonar_holder;
+    sonar_processing::SonarHolder sonar_holder;
 
     void update_selection_rectangle() {
         sel_rect.x = floor(std::min<int>(sel_point0.x, sel_point1.x) / SCALE_FACTOR);
@@ -581,8 +581,8 @@ void SonarView_initialize_line_indices(SonarViewContext& context) {
     cv::cvtColor(context.scale_image, context.canvas, CV_GRAY2BGR);
     context.sel_line_indices.clear();
     context.sel_column_indices.clear();
-    sonar_target_tracking::basic_operations::line_indices(context.sonar_holder, context.sel_polar_index, context.sel_line_indices);
-    sonar_target_tracking::basic_operations::column_indices(context.sonar_holder, context.sel_polar_index, context.sel_column_indices);
+    sonar_processing::basic_operations::line_indices(context.sonar_holder, context.sel_polar_index, context.sel_line_indices);
+    sonar_processing::basic_operations::column_indices(context.sonar_holder, context.sel_polar_index, context.sel_column_indices);
 }
 
 void SonarView_draw_cart_path(SonarViewContext& context) {
@@ -937,9 +937,9 @@ void SonarView_selection_image_right_mouse_button_up(SonarViewContext& context, 
         std::vector<int> line_indices, column_indices, neighborhood_indices;
         std::vector<cv::Point2f> line_points, column_points, neighborhood_points;
 
-        sonar_target_tracking::basic_operations::intersetion_line(context.sonar_holder, context.sel_polar_index, neighbor_size, line_indices, line_points);
-        sonar_target_tracking::basic_operations::intersetion_column(context.sonar_holder, context.sel_polar_index, neighbor_size, column_indices, column_points);
-        sonar_target_tracking::basic_operations::neighborhood(context.sonar_holder, context.sel_polar_index, neighbor_size, neighborhood_indices, neighborhood_points);
+        sonar_processing::basic_operations::intersetion_line(context.sonar_holder, context.sel_polar_index, neighbor_size, line_indices, line_points);
+        sonar_processing::basic_operations::intersetion_column(context.sonar_holder, context.sel_polar_index, neighbor_size, column_indices, column_points);
+        sonar_processing::basic_operations::neighborhood(context.sonar_holder, context.sel_polar_index, neighbor_size, neighborhood_indices, neighborhood_points);
 
         for (int line = 0; line < neighbor_size; line++) {
             for (int col = 0; col < neighbor_size; col++) {
@@ -1470,7 +1470,7 @@ int main(int argc, char const *argv[]) {
 
     uint32_t sz = sizeof(logfiles) / sizeof(std::string);
 
-    sonar_target_tracking::SonarHolder sonar_holder;
+    sonar_processing::SonarHolder sonar_holder;
 
     for (uint32_t i = 0; i < sz; i++) {
         rock_util::LogReader reader(logfiles[i]);

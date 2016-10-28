@@ -6,11 +6,11 @@
 #include "rock_util/SonarSampleConverter.hpp"
 #include "rock_util/Utilities.hpp"
 #include "sonar_util/Converter.hpp"
-#include "sonar_target_tracking/ImageUtils.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
+#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/Preprocessing.hpp"
 #include "base/test_config.h"
 
-using namespace sonar_target_tracking;
+using namespace sonar_processing;
 using namespace rock_util;
 
 

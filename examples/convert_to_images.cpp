@@ -3,10 +3,10 @@
 #include <boost/filesystem.hpp>
 #include "rock_util/LogReader.hpp"
 #include "rock_util/SonarSampleConverter.hpp"
-#include "sonar_target_tracking/Preprocessing.hpp"
+#include "sonar_processing/Preprocessing.hpp"
 #include "base/test_config.h"
 
-using namespace sonar_target_tracking;
+using namespace sonar_processing;
 
 int main(int argc, char **argv) {
 

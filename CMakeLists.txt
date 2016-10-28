@@ -4,29 +4,29 @@ project (sonarlog_target_tracking)
 include ( "${WORKSPACE_DIR}/base/cmake/Dependencies.cmake"  )
 include ( "${WORKSPACE_DIR}/third_party/cmake/Gnuplot.cmake"  )
 
-option (COMPILE_FIRST_SAMPLE_PROC OFF)
-option (COMPILE_CONVERT_TO_IMAGES OFF)
-option (COMPILE_DFT_PROC          OFF)
-option (COMPILE_VIDEO_GENERATOR   OFF)
-option (COMPILE_NEAREST_NEIGHBOR  OFF)
-option (COMPILE_ROI_EXTRACT       OFF)
+option (COMPILE_FIRST_SAMPLE_PROC       OFF)
+option (COMPILE_CONVERT_TO_IMAGES       OFF)
+option (COMPILE_DFT_PROC                OFF)
+option (COMPILE_VIDEO_GENERATOR         OFF)
+option (COMPILE_NEAREST_NEIGHBOR        OFF)
+option (COMPILE_POLAR_PROCESSING        OFF)
 
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-add_project_dependency (sonar_target_tracking ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+add_project_dependency (sonar_processing ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
-setup_headers ( sonar_target_tracking ${sonar_target_tracking_SOURCE_DIR} )
+setup_headers ( sonar_processing ${sonar_processing_SOURCE_DIR} )
 setup_headers ( ${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src" )
 
 file (
     GLOB THIRD_PARTY_HEADERS
-    "${sonar_target_tracking_SOURCE_DIR}/third_party/*.h"
-    "${sonar_target_tracking_SOURCE_DIR}/third_party/*.hpp"
+    "${sonar_processing_SOURCE_DIR}/third_party/*.h"
+    "${sonar_processing_SOURCE_DIR}/third_party/*.hpp"
 )
 
 configure_file_list (
     INPUT_FILES ${THIRD_PARTY_HEADERS}
-    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_target_tracking/third_party"
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_processing/third_party"
 )
 
 
@@ -48,7 +48,7 @@ set (
 file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
 list ( REMOVE_ITEM SRCS "src/main.cpp" )
 
-set ( SRCS ${SRCS} ${sonar_target_tracking_SOURCES} )
+set ( SRCS ${SRCS} ${sonar_processing_SOURCES} )
 
 pkg_check_modules(pocolog_cpp pocolog_cpp)
 
@@ -57,7 +57,7 @@ include_directories (
     ${base_INCLUDE_DIR}
     ${sonar_util_INCLUDE_DIR}
     ${rock_util_INCLUDE_DIR}
-    ${sonar_target_tracking_INCLUDE_DIR}
+    ${sonar_processing_INCLUDE_DIR}
     ${gnuplot_INCLUDE_DIR}
     ${ROCK_ROBOTICS_INCLUDE_DIR}
     ${EIGEN3_INCLUDE_DIR}
@@ -166,22 +166,22 @@ if (COMPILE_NEAREST_NEIGHBOR)
 
 endif(COMPILE_NEAREST_NEIGHBOR)
 
-if (COMPILE_ROI_EXTRACT)
+if (COMPILE_POLAR_PROCESSING)
 
-    message ( STATUS "Compile roi_extract example")
+    message ( STATUS "Compile Polar Cart Processing example")
 
     add_executable (
-        roi_extract
-        examples/roi_extract.cpp
+        polar_processing
+        examples/polar_processing.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        roi_extract
+        polar_processing
         ${LIBS}
     )
 
-endif(COMPILE_ROI_EXTRACT)
+endif(COMPILE_POLAR_PROCESSING)
 
 boost_test_init()
 
