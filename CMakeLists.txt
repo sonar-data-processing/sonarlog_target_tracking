@@ -18,18 +18,6 @@ add_project_dependency (sonar_processing ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY
 setup_headers ( sonar_processing ${sonar_processing_SOURCE_DIR} )
 setup_headers ( ${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src" )
 
-file (
-    GLOB THIRD_PARTY_HEADERS
-    "${sonar_processing_SOURCE_DIR}/third_party/*.h"
-    "${sonar_processing_SOURCE_DIR}/third_party/*.hpp"
-)
-
-configure_file_list (
-    INPUT_FILES ${THIRD_PARTY_HEADERS}
-    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/include/sonar_processing/third_party"
-)
-
-
 include ( FindPkgConfig  )
 include ( BoostTest )
 
@@ -45,8 +33,8 @@ set (
     FORCE
 )
 
-file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/*.cpp )
-list ( REMOVE_ITEM SRCS "src/main.cpp" )
+file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/[^main]*.cpp )
+# list ( REMOVE_ITEM SRCS "src/main.cpp" )
 
 set ( SRCS ${SRCS} ${sonar_processing_SOURCES} )
 
