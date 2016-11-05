@@ -255,83 +255,6 @@ struct SonarViewContext {
         beam_out = sonar_holder.index_to_beam(indices[0]);
     }
 
-    void compute_neighbors_direction(int polar_index, std::vector<int>& direction_mapping, std::vector<int>& neighbors_indices, std::vector<float>& neighbors_angles) {
-        const int kNumberOfNeighbors = 4;
-
-        sonar_holder.GetNeighborhoodAngles(polar_index, polar_index, neighbors_indices, neighbors_angles);
-        direction_mapping.assign(kNumberOfNeighbors, -1);
-
-        float direction_angles[4] = {
-            0,              // 0deg
-            M_PI,           // 180deg
-            M_PI_2,         // 90deg
-            M_PI + M_PI_2   // 270deg
-        };
-
-        for (size_t k = 0; k < kNumberOfNeighbors; k++) {
-            direction_mapping[k] = sonar_holder.GetMinAngleDistance(neighbors_angles, neighbors_indices, direction_angles[k]);
-        }
-    }
-
-    int min_angle_difference_element(const std::vector<int>& neighbors_indices,
-                                     const std::vector<float>& neighbors_angles,
-                                     float angle) {
-        float min_theta = FLT_MAX;
-        int min_idx = -1;
-        for (size_t i = 0; i < neighbors_indices.size(); i++) {
-            if (neighbors_indices[i] != -1) {
-                float theta = base::MathUtil::angle_difference(neighbors_angles[i], angle);
-                if (theta < min_theta) {
-                    min_theta = theta;
-                    min_idx = i;
-                }
-            }
-        }
-        return min_idx;
-
-    }
-
-    void recursive_find_cart_right_bins(int ref_polar_index, int polar_index,
-                                        const std::vector<cv::Point2f>& cart_points,
-                                        std::vector<int>& polar_indices) {
-        if (polar_index == -1) return;
-
-        if (sonar_holder.index_to_beam(polar_index) >= sonar_holder.beam_count()-2 ||
-            sonar_holder.index_to_bin(polar_index) >= sonar_holder.bin_count()-2) {
-            return;
-        }
-
-        polar_indices.push_back(polar_index);
-
-        std::vector<int> neighbors_indices;
-        sonar_holder.GetNeighborhood(polar_index, neighbors_indices);
-
-        cv::Point2f ref_pt = cart_points[ref_polar_index];
-        cv::Point2f pt = cart_points[polar_index];
-
-        int min_index = -1;
-        float min_dy = FLT_MAX;
-
-        for (size_t i = 0; i < neighbors_indices.size(); i++) {
-            cv::Point2f neighbor_pt = cart_points[neighbors_indices[i]];
-
-            if (neighbor_pt.x > pt.x) {
-                float dy = ref_pt.y - neighbor_pt.y;
-
-                if (fabs(dy) < min_dy) {
-                    min_dy = fabs(dy);
-                    min_index = i;
-                }
-            }
-        }
-
-        recursive_find_cart_right_bins(ref_polar_index, neighbors_indices[min_index], cart_points, polar_indices);
-    }
-
-    void cart_right_bins(int polar_index, std::vector<int>& polar_indices) {
-        recursive_find_cart_right_bins(polar_index, polar_index, sonar_holder.cart_center_points(), polar_indices);
-    }
-
     void get_cart_left_bins(int polar_index, std::vector<int>& indices, int max_size = -1) {
         get_cart_bins(polar_index, indices, &left_comparator, max_size);
     }
@@ -493,39 +416,6 @@ void SonarView_draw_arrowed_line(cv::Mat img, cv::Point2f pt1, cv::Point2f pt2, 
     cv::line(img, pt2, tip_pt2, color, thickness);
 }
 
-void SonarView_draw_angles(SonarViewContext& context, int polar_index) {
-    std::vector<int> neighbors_indices;
-    std::vector<float> neighbors_angles;
-
-    int sel_polar_index = (context.sel_polar_index != -1) ? context.sel_polar_index : polar_index;
-    context.sonar_holder.GetNeighborhoodAngles(sel_polar_index, polar_index, neighbors_indices, neighbors_angles);
-
-    int element_mask[] = {1, 1, 1,
-                          1, 0, 1,
-                          1, 1, 1};
-
-    std::vector<cv::Point2f> pts;
-    std::vector<uint32_t> indices;
-    std::vector<cv::Point2f> cart_center_points = context.sonar_holder.cart_center_points();
-    for (size_t i = 0; i < neighbors_indices.size(); i++) {
-
-        if (element_mask[i]) {
-            int polar_index = neighbors_indices[i];
-            cv::Point2f pt = cart_center_points[polar_index];
-            pt= context.scale_to_selection(pt);
-            cv::circle(context.sel_canvas, pt, 3, cv::Scalar(0, 0, 255), 2);
-            pts.push_back(pt);
-            indices.push_back(i);
-        }
-    }
-
-    char buff[256];
-    for (size_t i = 0; i < indices.size(); i++){
-        sprintf(buff, "%0.2f", base::Angle::rad2Deg(neighbors_angles[indices[i]]));
-        cv::putText(context.sel_canvas, buff, pts[i], cv::FONT_HERSHEY_COMPLEX_SMALL, 0.5, cv::Scalar(255, 255, 255));
-    }
-}
-
 void SonarView_draw_sonar_cart_path(SonarViewContext& context, int polar_index, const std::vector<int>& indices, int direction = 0) {
     if (indices.size() > 1) {
         std::vector<cv::Point2f> cart_points = context.sonar_holder.cart_center_points();
@@ -590,16 +480,6 @@ void SonarView_draw_cart_path(SonarViewContext& context) {
     SonarView_draw_sonar_cart_line(context, context.sel_polar_index, context.sel_line_indices);
     SonarView_draw_sonar_cart_column(context, context.sel_polar_index, context.sel_column_indices);
     cv::circle(context.sel_canvas, cv::Point(context.sel_cart_point.x, context.sel_cart_point.y), 3, cv::Scalar(0, 255, 0), 2);
-    cv::imshow(SEL_WINDOW_TITLE, context.sel_canvas);
-    cv::imshow(IMAGE_TITLE, context.canvas);
-}
-
-void SonarView_draw_cart_path2(SonarViewContext& context) {
-    cv::cvtColor(context.scale_image, context.canvas, CV_GRAY2BGR);
-    std::vector<float> angles;
-    context.sel_right_indices.clear();
-    context.cart_right_bins(context.sel_polar_index, context.sel_right_indices);
-    SonarView_draw_sonar_cart_line(context, context.sel_polar_index, context.sel_right_indices);
     cv::imshow(SEL_WINDOW_TITLE, context.sel_canvas);
     cv::imshow(IMAGE_TITLE, context.canvas);
 }
@@ -957,96 +837,6 @@ void SonarView_selection_image_right_mouse_button_up(SonarViewContext& context, 
     }
 }
 
-void SonarView_selection_image_ctrl_left_mouse_button_up(SonarViewContext& context, int x, int y) {
-    int beam, bin;
-    cv::Point2f click_point = cv::Point2f(x / context.sel_scale_factor, y /context.sel_scale_factor);
-    click_point += context.sel_origin;
-    context.cart_to_polar(click_point.x, click_point.y, bin, beam);
-
-    int polar_index = beam * context.sonar_holder.bin_count() + bin;
-
-    cv::Point2f sel_cart_point = context.sonar_holder.cart_center_point(bin, beam);
-    sel_cart_point = context.scale_to_selection(sel_cart_point);
-
-    std::vector<int> directions_mapping;
-    std::vector<int> neighbors_indices;
-    std::vector<float> neighbors_angles;
-
-    std::vector<float> bearings = context.sonar_holder.bearings();
-
-    int angle_step = context.sonar_holder.beam_count() / 5;
-    float rotate_angle = ((beam /  angle_step) - 2) * (M_PI / 4.0);
-
-    context.compute_neighbors_direction(polar_index, directions_mapping, neighbors_indices, neighbors_angles);
-
-    const int neighbor_size = 3;
-    const int total_neighbors = neighbor_size * neighbor_size;
-
-
-    for (size_t i = 0; i < total_neighbors; i++) {
-        int y = i / neighbor_size;
-        int x = i % neighbor_size;
-
-        printf("[%d]", neighbors_indices[i]);
-
-        if (x == neighbor_size-1) {
-            printf("\n");
-        }
-    }
-    printf("\n");
-
-    std::vector<int> rotate_neighbors(total_neighbors, -1);
-    int cx = 1;
-    int cy = 1;
-    char buff[256];
-    std::vector<cv::Point2f> cart_center_points = context.sonar_holder.cart_center_points();
-
-    for (size_t i = 0; i < total_neighbors; i++) {
-        int y = i / neighbor_size;
-        int x = i % neighbor_size;
-
-        int dx = cx - x;
-        int dy = cy - y;
-        float r = sqrt(dx * dx + dy * dy);
-        float t = atan2(dy, dx) + M_PI;
-
-        float new_angle = base::Angle::normalizeRad(t - rotate_angle);
-
-        int xx = round(cos(new_angle) * r) + cx;
-        int yy = round(sin(new_angle) * r) + cy;
-
-        int ii = yy * neighbor_size + xx;
-        rotate_neighbors[i] = ii;
-        printf("[%d]", neighbors_indices[ii]);
-
-        if (x == neighbor_size-1) {
-            printf("\n");
-        }
-    }
-
-    printf("direction_neighborhood\n");
-    int directions_indices[4] = {1, 7, 3, 5};
-
-    for (size_t i = 0; i < 4; i++)
-    {
-        int j = directions_indices[i];
-        cv::Point2f point = cart_center_points[neighbors_indices[rotate_neighbors[j]]];
-
-        point = context.scale_to_selection(point);
-        int y = j / neighbor_size;
-        int x = j % neighbor_size;
-
-        int dx = cx - x;
-        int dy = cy - y;
-        float r = sqrt(dx * dx + dy * dy);
-        float t = atan2(dy, dx) + M_PI;
-
-        sprintf(buff, "%0.2f", base::Angle::rad2Deg(base::Angle::normalizeRad(t)));
-        SonarView_draw_arrowed_line(context.sel_canvas, sel_cart_point, point, cv::Scalar(0, 255, 255), 2);
-        cv::putText(context.sel_canvas, buff, point, cv::FONT_HERSHEY_COMPLEX_SMALL, 0.5, cv::Scalar(255, 127, 255));
-    }
-}
-
 std::vector<int> SonarView_get_polar_corners(SonarViewContext& context, int polar_index) {
     int beam = context.sonar_holder.index_to_beam(polar_index);
     int bin = context.sonar_holder.index_to_bin(polar_index);
@@ -1078,100 +868,6 @@ void SonarView_draw_polar_corners(SonarViewContext& context, int polar_index) {
     }
 }
 
-void SonarView_selection_image_ctrl_right_mouse_button_up(SonarViewContext& context, int x, int y) {
-
-    int beam, bin;
-    cv::Point2f click_point = cv::Point2f(x / context.sel_scale_factor, y /context.sel_scale_factor);
-    click_point += context.sel_origin;
-    context.cart_to_polar(click_point.x, click_point.y, bin, beam);
-
-    int polar_index = beam * context.sonar_holder.bin_count() + bin;
-    SonarView_draw_polar_corners(context, polar_index);
-
-    std::vector<cv::Point2f> cart_center_points = context.sonar_holder.cart_center_points();
-
-    if (context.sel_polar_index == -1) {
-        context.sel_polar_index = polar_index;
-    }
-
-    cv::Point2f sel_cart_point = cart_center_points[polar_index];
-    sel_cart_point = context.scale_to_selection(sel_cart_point);
-    cv::circle(context.sel_canvas, sel_cart_point, 2, cv::Scalar(0, 255, 0), 2);
-
-    cv::Point2f ref_cart_point = cart_center_points[context.sel_polar_index];
-    ref_cart_point = context.scale_to_selection(ref_cart_point);
-    cv::circle(context.sel_canvas, ref_cart_point, 5, cv::Scalar(0, 255, 0), 2);
-    cv::circle(context.sel_canvas, ref_cart_point, 2, cv::Scalar(255, 255, 255), 2);
-
-    std::vector<int> neighbors_indices;
-    std::vector<float> neighbors_angles;
-
-    context.sonar_holder.GetNeighborhoodAngles(context.sel_polar_index, polar_index, neighbors_indices, neighbors_angles);
-
-    if (neighbors_indices.size() > 0) {
-
-        char buff[256];
-
-        std::vector<cv::Point2f> corner_indices;
-
-        float min_dy = FLT_MAX;
-        int min_index = -1;
-
-        for (size_t i = 0; i < neighbors_indices.size(); i++) {
-
-            cv::Point2f point = cart_center_points[neighbors_indices[i]];
-
-            point = context.scale_to_selection(point);
-
-            if (point.x > sel_cart_point.x) {
-                float dy = ref_cart_point.y - point.y;
-
-                printf("delta_y: %f\n", fabs(dy));
-                if (fabs(dy) < min_dy) {
-                    min_dy = fabs(dy);
-                    min_index = i;
-                }
-
-                cv::circle(context.sel_canvas, point, 2, cv::Scalar(0, 0, 255), 2);
-
-                std::vector<int> polar_indices = SonarView_get_polar_corners(context, neighbors_indices[i]);
-                std::vector<cv::Point2f> corner_cart_points = SonarView_get_cart_points(context, polar_indices);
-                corner_indices.insert(corner_indices.end(), corner_cart_points.begin(), corner_cart_points.end());
-
-                SonarView_draw_polar_corners(context, neighbors_indices[i]);
-            }
-        }
-
-        cv::Rect rc = cv::boundingRect(cv::Mat(corner_indices));
-        std::cout << "rc: " << rc << std::endl;
-        rc = context.scale_to_selection(rc);
-        cv::rectangle(context.sel_canvas, rc, cv::Scalar(255, 0, 0), 2);
-        cv::line(context.sel_canvas, ref_cart_point, cv::Point2f(rc.br().x, ref_cart_point.y), cv::Scalar(0, 255, 255), 2);
-
-        if (min_index != -1) {
-            printf("draw in_index");
-            cv::Point2f point = cart_center_points[neighbors_indices[min_index]];
-            point = context.scale_to_selection(point);
-            cv::circle(context.sel_canvas, point, 5, cv::Scalar(0, 255, 0), 3);
-        }
-
-
-    }
-}
-
-void SonarView_selection_image_ctrl_shift_left_mouse_button_up(SonarViewContext& context, int x, int y) {
-    int beam, bin;
-    cv::Point2f click_point = cv::Point2f(x / context.sel_scale_factor, y /context.sel_scale_factor);
-    click_point += context.sel_origin;
-    context.cart_to_polar(click_point.x, click_point.y, bin, beam);
-
-    context.sel_polar_index = beam * context.sonar_holder.bin_count() + bin;
-    context.sel_cart_point = context.sonar_holder.cart_center_point(bin, beam);
-    context.sel_cart_point = context.scale_to_selection(context.sel_cart_point);
-    SonarView_draw_cart_path2(context);
-    printf("Recursive right bins\n");
-}
-
 void SonarView_selection_image_mousecb(int event, int x, int y, int flags, void* data) {
     SonarViewContext *ctx = (SonarViewContext*)data;
 
@@ -1179,29 +875,13 @@ void SonarView_selection_image_mousecb(int event, int x, int y, int flags, void*
         case cv::EVENT_LBUTTONUP:
         {
             ctx->sel_image.copyTo(ctx->sel_canvas);
-            if (flags & cv::EVENT_FLAG_CTRLKEY) {
-                if (flags & cv::EVENT_FLAG_SHIFTKEY) {
-                    SonarView_selection_image_ctrl_shift_left_mouse_button_up(*ctx, x, y);
-                }
-                else {
-                    SonarView_selection_image_ctrl_left_mouse_button_up(*ctx, x, y);
-                }
-            }
-            else {
-                SonarView_selection_image_left_mouse_button_up(*ctx, x, y);
-            }
+            SonarView_selection_image_left_mouse_button_up(*ctx, x, y);
         }
         break;
         case cv::EVENT_RBUTTONUP:
         {
             ctx->sel_image.copyTo(ctx->sel_canvas);
-            if (flags & cv::EVENT_FLAG_CTRLKEY) {
-                SonarView_selection_image_ctrl_right_mouse_button_up(*ctx, x, y);
-            }
-            else {
-                SonarView_selection_image_right_mouse_button_up(*ctx, x, y);
-
-            }
+            SonarView_selection_image_right_mouse_button_up(*ctx, x, y);
         }
         break;
     }
