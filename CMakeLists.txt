@@ -10,10 +10,12 @@ option (COMPILE_DFT_PROC                OFF)
 option (COMPILE_VIDEO_GENERATOR         OFF)
 option (COMPILE_NEAREST_NEIGHBOR        OFF)
 option (COMPILE_POLAR_PROCESSING        OFF)
+option (COMPILE_CARTESIAN_PROCESSING    OFF)
 
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
-add_project_dependency (sonar_processing ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+add_project_dependency (sonar_processing      ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+add_project_dependency (sonarlog_annotation   ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 setup_headers ( sonar_processing ${sonar_processing_SOURCE_DIR} )
 setup_headers ( ${PROJECT_NAME} "${CMAKE_CURRENT_SOURCE_DIR}/src" )
@@ -170,6 +172,25 @@ if (COMPILE_POLAR_PROCESSING)
     )
 
 endif(COMPILE_POLAR_PROCESSING)
+
+if (COMPILE_CARTESIAN_PROCESSING)
+
+    message ( STATUS "Compile Cartesian Processing example")
+
+    add_executable (
+        cartesian_processing
+        examples/cartesian_processing_main.cpp
+        examples/cartesian_processing.cpp
+        ${SRCS}
+    )
+
+    target_link_libraries (
+        cartesian_processing
+        annotation_filereader
+        ${LIBS}
+    )
+
+endif(COMPILE_CARTESIAN_PROCESSING)
 
 boost_test_init()
 
