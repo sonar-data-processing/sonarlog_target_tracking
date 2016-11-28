@@ -10,45 +10,6 @@
 using namespace sonar_processing;
 using namespace sonar_processing::frequency_domain;
 
-void central_frequencies_reject(const cv::Size& size, double D, int n, int center_distance, cv::OutputArray dstx, cv::OutputArray dsty) {
-    uint32_t w = size.width;
-    uint32_t h = size.height;
-
-    int cx = w / 2;
-    int cy = h / 2;
-
-    cv::Mat filterx = cv::Mat(size, CV_8UC1);
-    cv::Mat filtery = cv::Mat(size, CV_8UC1);
-
-    filterx.setTo(255);
-    filtery.setTo(255);
-
-    for (int y = 0; y < h; y++) {
-        for (int x = 0; x < w; x++) {
-            double dy = y - cy;
-            double dx = x - cx;
-
-            double rx = sqrt(dx * dx);
-            double ry = sqrt(dy * dy);
-            double r = sqrt(dx * dx + dy * dy);
-
-            if (r > center_distance) {
-                filterx.at<uchar>(y, x) = 1.0 / (1.0 + pow(D / rx, 2.0 * n)) * 255;
-                filtery.at<uchar>(y, x) = 1.0 / (1.0 + pow(D / ry, 2.0 * n)) * 255;
-            }
-        }
-    }
-
-    filterx.convertTo(filterx, CV_32F, 1.0/255.0);
-    filtery.convertTo(filtery, CV_32F, 1.0/255.0);
-
-    cv::Mat to_mergex[] = {filterx, filterx};
-    cv::merge(to_mergex, 2, dstx);
-
-    cv::Mat to_mergey[] = {filtery, filtery};
-    cv::merge(to_mergey, 2, dsty);
-}
-
 void test_ideal_lowpass_filter(const cv::Mat& src) {
     cv::Mat tf;
     filters::ideal_lowpass(src.size(), 30, tf);
@@ -130,7 +91,7 @@ void frequency_noise_removal(cv::InputArray src_arr, cv::OutputArray dst_arr) {
     cv::Mat tf_bwlp;
 
     filters::butterworth_lowpass(freq.size(), 25, 2, tf_bwlp);
-    central_frequencies_reject(freq.size(), 2, 1, 5, tf_x, tf_y);
+    filters::central_frequencies_reject(freq.size(), 2, 1, 5, tf_x, tf_y);
 
     dft::show_spectrum("freq", freq);
     dft::show_spectrum("tf_x", tf_x);
