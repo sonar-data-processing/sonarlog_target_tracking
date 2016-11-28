@@ -5,6 +5,7 @@
 #include "rock_util/LogReader.hpp"
 #include "rock_util/SonarSampleConverter.hpp"
 #include "rock_util/Utilities.hpp"
+#include "sonar_processing/Utils.hpp"
 #include "sonar_processing/ImageUtils.hpp"
 #include "sonar_processing/SonarHolder.hpp"
 #include "sonar_processing/PolarCartesianScanner.hpp"
@@ -812,28 +813,54 @@ void SonarView_selection_image_right_mouse_button_up(SonarViewContext& context, 
 
     if (context.sel_polar_index != -1) {
 
-        const int neighbor_size = 11;
+        // const int neighbor_size = 11;
+        //
+        // std::vector<int> line_indices, column_indices, neighborhood_indices;
+        // std::vector<cv::Point2f> line_points, column_points, neighborhood_points;
+        //
+        // sonar_processing::basic_operations::intersetion_line(context.sonar_holder, context.sel_polar_index, neighbor_size, line_indices, line_points);
+        // sonar_processing::basic_operations::intersetion_column(context.sonar_holder, context.sel_polar_index, neighbor_size, column_indices, column_points);
+        // sonar_processing::basic_operations::neighborhood(context.sonar_holder, context.sel_polar_index, neighbor_size, neighborhood_indices, neighborhood_points);
+        //
+        // for (int line = 0; line < neighbor_size; line++) {
+        //     for (int col = 0; col < neighbor_size; col++) {
+        //
+        //         int index = neighborhood_indices[line * neighbor_size + col];
+        //         cv::Point2f point = neighborhood_points[line * neighbor_size + col];
+        //
+        //         if (index != -1) {
+        //             cv::circle(context.sel_canvas, context.scale_to_selection(cv::Point2f(point.x, column_points[line].y)), 3, cv::Scalar(0, 255, 0), CV_FILLED);
+        //         }
+        //     }
+        // }
 
-        std::vector<int> line_indices, column_indices, neighborhood_indices;
-        std::vector<cv::Point2f> line_points, column_points, neighborhood_points;
 
-        sonar_processing::basic_operations::intersetion_line(context.sonar_holder, context.sel_polar_index, neighbor_size, line_indices, line_points);
-        sonar_processing::basic_operations::intersetion_column(context.sonar_holder, context.sel_polar_index, neighbor_size, column_indices, column_points);
-        sonar_processing::basic_operations::neighborhood(context.sonar_holder, context.sel_polar_index, neighbor_size, neighborhood_indices, neighborhood_points);
+        // const int neighbor_size = 15;
+        //
+        // std::vector<int> neighborhood_indices;
+        //
+        // sonar_processing::basic_operations::neighborhood(context.sonar_holder, context.sel_polar_index, neighbor_size, neighborhood_indices);
+        //
+        // std::vector<cv::Point2f> cart_points = context.sonar_holder.cart_center_points();
+        //
+        // for (size_t i = 0; i < neighborhood_indices.size(); i++) {
+        //     cv::circle(context.sel_canvas, context.scale_to_selection(cart_points[neighborhood_indices[i]]), 3, cv::Scalar(0, 0, 255), CV_FILLED);
+        // }
+        //
+        // SonarView_select_image_draw_points(context, context.scale_to_selection(line_points), 3, cv::Scalar(255, 255, 255), CV_FILLED);
 
-        for (int line = 0; line < neighbor_size; line++) {
-            for (int col = 0; col < neighbor_size; col++) {
+        printf("bin: %d\n", context.sonar_holder.index_to_bin(context.sel_polar_index));
 
-                int index = neighborhood_indices[line * neighbor_size + col];
-                cv::Point2f point = neighborhood_points[line * neighbor_size + col];
+        const int neighbor_size = 5;
+        std::vector<cv::Point2f> cart_points = context.sonar_holder.cart_center_points();
 
-                if (index != -1) {
-                    cv::circle(context.sel_canvas, context.scale_to_selection(cv::Point2f(point.x, column_points[line].y)), 3, cv::Scalar(0, 255, 0), CV_FILLED);
-                }
-            }
+        std::vector<int> neighborhood_indices(neighbor_size*neighbor_size, -1);
+        context.sonar_holder.GetCartesianNeighborhoodIndices(context.sel_polar_index, neighborhood_indices, neighbor_size);
+
+        for (size_t i = 0; i < neighborhood_indices.size(); i++) {
+            // printf("indices: %d\n", neighborhood_indices[i]);
+            cv::circle(context.sel_canvas, context.scale_to_selection(cart_points[neighborhood_indices[i]]), 3, cv::Scalar(0, 0, 255), CV_FILLED);
         }
-
-        SonarView_select_image_draw_points(context, context.scale_to_selection(line_points), 3, cv::Scalar(255, 255, 255), CV_FILLED);
     }
 }
 
@@ -1151,6 +1178,7 @@ int main(int argc, char const *argv[]) {
     uint32_t sz = sizeof(logfiles) / sizeof(std::string);
 
     sonar_processing::SonarHolder sonar_holder;
+    sonar_processing::PolarCartesianScanner polar_cartesian_scanner;
 
     for (uint32_t i = 0; i < sz; i++) {
         rock_util::LogReader reader(logfiles[i]);
@@ -1167,6 +1195,15 @@ int main(int argc, char const *argv[]) {
                 sample.bin_count,
                 sample.beam_count);
                 stream.next<base::samples::Sonar>(sample);
+
+            if (sonar_holder.is_neigoborhood_table_modifed(sample.bin_count, sample.beam_count)) {
+                std::cout << "Building neighborhood table..." << std::endl;
+                uint64_t start_time = sonar_processing::utils::now::milliseconds();
+                sonar_holder.BuildNeighborhoodTable(&polar_cartesian_scanner, sample.bin_count, sample.beam_count, 7, 200);
+                uint64_t delta_time = sonar_processing::utils::now::milliseconds()-start_time;
+                std::cout << "Neighborhood table built with success..." << std::endl;
+                printf("Total time: %ld\n", delta_time);
+            }
 
             SonarViewContext context(sonar_holder);
             SonarView_initialize(context);

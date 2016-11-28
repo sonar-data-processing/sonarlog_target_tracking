@@ -11,10 +11,10 @@
 #include "sonar_processing/Filtering.hpp"
 #include "base/test_config.h"
 
-#define TITLE_CART_IMAGE_WINDOW         "roi_extract-cart_image"
-#define TITLE_CART_IMAGE_WINDOW_RESULT  "roi_extract-cart_image-result"
-#define TITLE_RAW_IMAGE_WINDOW          "roi_extract-raw_image"
-#define TITLE_RAW_IMAGE_WINDOW_RESULT   "roi_extract-raw_image-result"
+#define TITLE_CART_IMAGE_WINDOW         "polar_processing-cart_image"
+#define TITLE_CART_IMAGE_WINDOW_RESULT  "polar_processing-cart_image-result"
+#define TITLE_RAW_IMAGE_WINDOW          "polar_processing-raw_image"
+#define TITLE_RAW_IMAGE_WINDOW_RESULT   "polar_processing-raw_image-result"
 
 using namespace sonar_processing;
 
@@ -42,7 +42,7 @@ struct PolarProcessingContext  {
         int h = sonar_holder.cart_size().height * scale_factor;
         cv::resize(sonar_holder.cart_image(), cart_image, cv::Size(w, h));
     }
-    
+
     void create_raw_image() {
         raw_image = sonar_holder.raw_image();
     }
@@ -98,7 +98,7 @@ struct PolarProcessingContext  {
             }
         }
     }
-    
+
     void draw_raw_image_line(const std::vector<int>& line, cv::Scalar line_color) {
         for (int i = 1; i < line.size(); i++) {
             cv::Point pt0 = cv::Point(sonar_holder.index_to_bin(line[i-1]), sonar_holder.index_to_beam(line[i-1]));
@@ -110,7 +110,7 @@ struct PolarProcessingContext  {
     cv::Point2f scale_to_image(cv::Point2f pt) {
         return pt * scale_factor;
     }
-    
+
     void draw() {
         draw_start_line();
         draw_final_line();
@@ -160,12 +160,19 @@ void PolarProcessing_sonar_show(PolarProcessingContext& context, std::string pre
 void PolarProcessing_box_filter(PolarProcessingContext& context, SonarHolder& sonar_holder, int ksize = 3) {
     cv::Mat kernel = cv::Mat::ones(cv::Size(ksize, ksize), CV_32F) / (ksize * ksize);
     std::vector<float> bins;
+    uint64_t start_time = sonar_processing::utils::now::milliseconds();
     filtering::filter2d(sonar_holder, bins, kernel);
+    uint64_t delta_time = sonar_processing::utils::now::milliseconds()-start_time;
+    printf("Box filter total time: %ld\n", delta_time);
     sonar_holder.ResetBins(bins);
 }
 
+
 void PolarProcessing_run(PolarProcessingContext& context) {
-    sonar_processing::roi::polar::bins_of_interest(context.sonar_holder, context.start_bin, context.final_bin);
+    // sonar_processing::roi::polar::bins_of_interest(context.sonar_holder, context.start_bin, context.final_bin);
+
+    context.start_bin = 200;
+    context.final_bin = context.sonar_holder.bin_count() - 200;
 
     std::vector<int> start_line_indices, final_line_indices;
     sonar_processing::basic_operations::line_indices_from_bin(context.sonar_holder, context.start_bin, start_line_indices);
@@ -173,7 +180,7 @@ void PolarProcessing_run(PolarProcessingContext& context) {
 
     printf("start_bin size: %d\n", context.start_bin);
     printf("final_bin size: %d\n", context.final_bin);
-    
+
     context.set_start_line_indices(start_line_indices);
     context.set_final_line_indices(final_line_indices);
 
@@ -201,6 +208,7 @@ int main(int argc, char const *argv[]) {
     uint32_t sz = sizeof(logfiles) / sizeof(std::string);
 
     sonar_processing::SonarHolder sonar_holder;
+    sonar_processing::PolarCartesianScanner polar_cartesian_scanner;
 
     for (uint32_t i = 0; i < sz; i++) {
         rock_util::LogReader reader(logfiles[i]);
@@ -208,6 +216,7 @@ int main(int argc, char const *argv[]) {
 
         base::samples::Sonar sample;
         stream.next<base::samples::Sonar>(sample);
+
 
         do {
 
@@ -217,15 +226,21 @@ int main(int argc, char const *argv[]) {
                 sample.bin_count,
                 sample.beam_count);
 
-            
+            if (sonar_holder.is_neighborhood_table_modified(sample.bin_count, sample.beam_count)) {
+                std::cout << "Building neighborhood table..." << std::endl;
+                uint64_t start_time = sonar_processing::utils::now::milliseconds();
+                sonar_holder.BuildNeighborhoodTable(&polar_cartesian_scanner, sample.bin_count, sample.beam_count);
+                uint64_t delta_time = sonar_processing::utils::now::milliseconds()-start_time;
+                std::cout << "Neighborhood table built with success..." << std::endl;
+                printf("Total time: %ld\n", delta_time);
+            }
+
             PolarProcessingContext context(sonar_holder);
             PolarProcessing_initialize(context);
             PolarProcessing_run(context);
-
             if (stream.current_sample_index() == 1) cv::waitKey(); else cv::waitKey(25);
-            stream.next<base::samples::Sonar>(sample);
 
-            // break;
+            stream.next<base::samples::Sonar>(sample);
         } while(stream.current_sample_index() < stream.total_samples());
     }
 }
