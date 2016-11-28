@@ -158,7 +158,7 @@ endif(COMPILE_NEAREST_NEIGHBOR)
 
 if (COMPILE_POLAR_PROCESSING)
 
-    message ( STATUS "Compile Polar Cart Processing example")
+    message ( STATUS "Compile Polar Processing example")
 
     add_executable (
         polar_processing
