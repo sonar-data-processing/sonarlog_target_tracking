@@ -4,7 +4,7 @@
 #include "rock_util/SonarSampleConverter.hpp"
 #include "sonar_processing/FrequencyDomain.hpp"
 #include "sonar_processing/Preprocessing.hpp"
-#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/ImageUtil.hpp"
 #include "base/test_config.h"
 
 using namespace sonar_processing;

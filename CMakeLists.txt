@@ -4,13 +4,14 @@ project (sonarlog_target_tracking)
 include ( "${WORKSPACE_DIR}/base/cmake/Dependencies.cmake"  )
 include ( "${WORKSPACE_DIR}/third_party/cmake/Gnuplot.cmake"  )
 
-option (COMPILE_FIRST_SAMPLE_PROC       OFF)
-option (COMPILE_CONVERT_TO_IMAGES       OFF)
-option (COMPILE_DFT_PROC                OFF)
-option (COMPILE_VIDEO_GENERATOR         OFF)
-option (COMPILE_NEAREST_NEIGHBOR        OFF)
-option (COMPILE_POLAR_PROCESSING        OFF)
-option (COMPILE_CARTESIAN_PROCESSING    OFF)
+option (COMPILE_CONVERT_TO_IMAGES   OFF)
+option (COMPILE_DFT_PROC            OFF)
+option (COMPILE_VIDEO_GENERATOR     OFF)
+option (COMPILE_PREPROCESSING       OFF)
+option (COMPILE_DETECTION           OFF)
+
+set ( COMPILE_PREPROCESSING ON )
+set ( COMPILE_DETECTION     ON )
 
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -26,6 +27,7 @@ include ( BoostTest )
 find_package ( Boost COMPONENTS system filesystem program_options iostreams unit_test_framework REQUIRED )
 find_package ( Eigen3 REQUIRED )
 find_package ( OpenCV REQUIRED )
+find_package ( yaml-cpp )
 
 set (
     ${PROJECT_NAME}_INCLUDE_DIR
@@ -36,7 +38,6 @@ set (
 )
 
 file ( GLOB SRCS RELATIVE ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/src/[^main]*.cpp )
-# list ( REMOVE_ITEM SRCS "src/main.cpp" )
 
 set ( SRCS ${SRCS} ${sonar_processing_SOURCES} )
 
@@ -51,6 +52,7 @@ include_directories (
     ${gnuplot_INCLUDE_DIR}
     ${ROCK_ROBOTICS_INCLUDE_DIR}
     ${EIGEN3_INCLUDE_DIR}
+    ${YAML_CPP_INCLUDE_DIR}
 )
 
 link_directories (
@@ -64,11 +66,11 @@ set (
     ${Boost_LIBRARIES}
     ${pocolog_cpp_LIBRARIES}
     ${OpenCV_LIBS}
+    ${YAML_CPP_LIBRARIES}
 )
 
-add_executable (
-    sonarlog_target_tracking
-    src/main.cpp
+add_library (
+    sonarlog_target_tracking STATIC
     ${SRCS}
 )
 
@@ -77,48 +79,44 @@ target_link_libraries (
     ${LIBS}
 )
 
-if (COMPILE_FIRST_SAMPLE_PROC)
-    message ( STATUS "Compile first_sample_proc example")
+add_executable (
+    sonarlog-target-tracking
+    src/main.cpp
+)
 
-    add_executable (
-        first_sample_proc
-        examples/first_sample_proc.cpp
-        ${SRCS}
-    )
-
-    target_link_libraries (
-        first_sample_proc
-        ${LIBS}
-    )
-endif(COMPILE_FIRST_SAMPLE_PROC)
+target_link_libraries (
+    sonarlog-target-tracking
+    ${LIBS}
+    sonarlog_target_tracking
+)
 
 if (COMPILE_CONVERT_TO_IMAGES)
     message ( STATUS "Compile first_sample_proc example")
 
     add_executable (
-        convert_to_images
+        sonarlog-convert_to_images
         examples/convert_to_images.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        convert_to_images
+        sonarlog-convert_to_images
         ${LIBS}
     )
 
 endif(COMPILE_CONVERT_TO_IMAGES)
 
 if (COMPILE_DFT_PROC)
-    message ( STATUS "Compile dft_proc example")
+    message ( STATUS "Compile DFT processing example")
 
     add_executable (
-        dft_proc
+        sonarlog-dft_proc
         examples/dft_proc.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        dft_proc
+        sonarlog-dft_proc
         ${LIBS}
     )
 
@@ -128,69 +126,54 @@ if (COMPILE_VIDEO_GENERATOR)
     message ( STATUS "Compile video_generator example")
 
     add_executable (
-        video_generator
+        sonarlog-video_generator
         examples/video_generator.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        video_generator
+        sonarlog-video-generator
         ${LIBS}
     )
 
 endif(COMPILE_VIDEO_GENERATOR)
 
-if (COMPILE_NEAREST_NEIGHBOR)
-    message ( STATUS "Compile nearest_neighbor example")
+if (COMPILE_DETECTION)
+
+    message ( STATUS "Compile Detection example")
 
     add_executable (
-        nearest_neighbor
-        examples/nearest_neighbor.cpp
+        sonarlog-detection
+        examples/detection.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        nearest_neighbor
+        sonarlog-detection
+        annotation_filereader
+        sonarlog_target_tracking
         ${LIBS}
     )
 
-endif(COMPILE_NEAREST_NEIGHBOR)
+endif(COMPILE_DETECTION)
 
-if (COMPILE_POLAR_PROCESSING)
+if (COMPILE_PREPROCESSING)
 
-    message ( STATUS "Compile Polar Processing example")
+    message ( STATUS "Compile Preprocessing example")
 
     add_executable (
-        polar_processing
-        examples/polar_processing.cpp
+        sonarlog-preprocessing
+        examples/preprocessing.cpp
         ${SRCS}
     )
 
     target_link_libraries (
-        polar_processing
-        ${LIBS}
-    )
-
-endif(COMPILE_POLAR_PROCESSING)
-
-if (COMPILE_CARTESIAN_PROCESSING)
-
-    message ( STATUS "Compile Cartesian Processing example")
-
-    add_executable (
-        cartesian_processing
-        examples/cartesian_processing_main.cpp
-        examples/cartesian_processing.cpp
-        ${SRCS}
-    )
-
-    target_link_libraries (
-        cartesian_processing
+        sonarlog-preprocessing
         annotation_filereader
         ${LIBS}
     )
 
-endif(COMPILE_CARTESIAN_PROCESSING)
+endif(COMPILE_PREPROCESSING)
 
 boost_test_init()
 

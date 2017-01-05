@@ -6,7 +6,7 @@
 #include "rock_util/SonarSampleConverter.hpp"
 #include "rock_util/Utilities.hpp"
 #include "sonar_util/Converter.hpp"
-#include "sonar_processing/ImageUtils.hpp"
+#include "sonar_processing/ImageUtil.hpp"
 #include "sonar_processing/Preprocessing.hpp"
 #include "base/test_config.h"
 
@@ -30,7 +30,7 @@ std::vector<cv::Point2f> compute_centroid(std::vector<std::vector<cv::Point> > c
     cv::distanceTransform(mask, mask, CV_DIST_C, CV_DIST_MASK_PRECISE);
     cv::normalize(mask, mask, 0, 1, cv::NORM_MINMAX);
     cv::threshold(mask, mask, 0.95, 1, cv::THRESH_BINARY);
-    cv::Mat polar_mask = sonar_util::Converter::convert2polar(image_utils::mat2vector<float>(mask), bearings, bin_count, beam_count, frame_size.width, frame_size.height, beam_mapping);
+    cv::Mat polar_mask = sonar_util::Converter::convert2polar(image_util::mat2vector<float>(mask), bearings, bin_count, beam_count, frame_size.width, frame_size.height, beam_mapping);
     std::vector<std::vector<cv::Point> > polar_contours = preprocessing::find_contours(polar_mask, mode, convex);
 
     std::vector<cv::Point2f> centroids(polar_contours.size());
@@ -55,7 +55,7 @@ std::vector<std::vector<cv::Point> > find_contours_polar(std::vector<std::vector
 
     cv::Mat mask = cv::Mat::zeros(cv::Size(bin_count, beam_count), CV_32FC1);
     cv::drawContours(mask, contours, -1, cv::Scalar(1), CV_FILLED);
-    cv::Mat polar_mask = sonar_util::Converter::convert2polar(image_utils::mat2vector<float>(mask), bearings, bin_count, beam_count, frame_size.width, frame_size.height, beam_mapping);
+    cv::Mat polar_mask = sonar_util::Converter::convert2polar(image_util::mat2vector<float>(mask), bearings, bin_count, beam_count, frame_size.width, frame_size.height, beam_mapping);
     return preprocessing::find_contours(polar_mask, mode, convex);
 }
 

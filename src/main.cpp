@@ -1,28 +1,6 @@
 #include <iostream>
-#include "sonarlog_target_tracking/ArgumentParser.hpp"
-#include "sonarlog_target_tracking/Application.hpp"
-
-using namespace sonarlog_target_tracking;
 
 int main(int argc, char const *argv[]) {
-
-    ArgumentParser argument_parser;
-    if (argument_parser.run(argc, argv)) {
-        std::cout << "Sonar's log processing" << std::endl;
-
-        // if (!argument_parser.background_files().empty()) {
-            // for (size_t i = 0; i < argument_parser.background_files().size(); i++) {
-            //     Application::instance()->process_background_features_from_logfile(argument_parser.background_files()[i], argument_parser.stream_name());
-            // }
-        // }
-        for (size_t i = 0; i < argument_parser.input_files().size(); i++) {
-            std::cout << "intput-file: " << argument_parser.input_files()[i]  << std::endl;
-            std::cout << "stream-name: " << argument_parser.stream_name() << "\n" << std::endl;
-            Application::instance()->init(argument_parser.input_files()[i], argument_parser.stream_name());
-            Application::instance()->process_logfile();
-        }
-
-    }
-
+    std::cout << "Hello World!!" << std::endl;
     return 0;
 }
