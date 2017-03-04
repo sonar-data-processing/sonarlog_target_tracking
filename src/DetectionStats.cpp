@@ -40,7 +40,33 @@ void DetectionStats::Save(const std::string& filename) const {
 }
 
 void DetectionStats::LoadFromFile(const std::string& filename) {
+    YAML::Node node = YAML::LoadFile(filename);
+    assert(node.Type() == YAML::NodeType::Sequence);
 
+    accuracy_levels_.resize(node.size());
+    classifier_weights_.resize(node.size());
+    detection_results_.resize(node.size());
+    annotations_.resize(node.size());
+    frame_sizes_.resize(node.size());
+
+    for (size_t i=0;i<node.size();i++) {
+        assert(node[i].Type() == YAML::NodeType::Map);
+
+        // Get accuracy level
+        node2vector(node[i]["accuracy_levels"], accuracy_levels_[i]);
+
+        // Get classifier weights
+        node2vector(node[i]["classifier_weights"], classifier_weights_[i]);
+
+        // Get detection results
+        NodeToRotatedRectVector(node[i]["detection_results"], detection_results_[i]);
+
+        // Get annotations
+        NodeToPointVector(node[i]["annotations"], annotations_[i]);
+
+        // Get frame size
+        NodeToSize(node[i]["frame_size"], frame_sizes_[i]);
+    }
 }
 
 std::map<std::string, float> DetectionStats::RotatedRectToMap(const cv::RotatedRect& rrect) const {
@@ -79,8 +105,59 @@ std::vector<std::map<std::string, int> > DetectionStats::PointVectorToMapVector(
     std::vector<std::map<std::string, int> > vec(points.size());
     for (std::vector<cv::Point>::const_iterator it = points.begin(); it != points.end(); it++) {
         vec[it-points.begin()] = PointToMap(*it);   
-    } 
+    }
     return vec;
 }
+
+void DetectionStats::NodeToRotatedRectVector(const YAML::Node& node, std::vector<cv::RotatedRect>& vec) {
+    assert(node != NULL);
+    assert(node.IsSequence());
+
+    if (node.size()==0) return;
+
+    vec.resize(node.size());
+    for (size_t i=0; i<node.size(); i++) {
+        NodeToRotatedRect(node[i], vec[i]);
+    }
+}
+
+void DetectionStats::NodeToRotatedRect(const YAML::Node& node, cv::RotatedRect& rrect) {
+    assert(node != NULL);
+    assert(node.IsMap());
+    assert(node["angle"]);
+    assert(node["cx"] && node["cy"]);
+    assert(node["width"] && node["height"]);
+    rrect= cv::RotatedRect(cv::Point2f(node["cx"].as<float>(), node["cy"].as<float>()),
+                           cv::Size2f(node["width"].as<float>(), node["height"].as<float>()),
+                           node["angle"].as<float>());
+}
+
+void DetectionStats::NodeToPointVector(const YAML::Node& node, std::vector<cv::Point>& vec) {
+    assert(node != NULL);
+    assert(node.IsSequence());
+
+    if (node.size()==0) return;
+
+    vec.resize(node.size());
+
+    for (size_t i=0; i<node.size(); i++) {
+        NodeToPoint(node[i], vec[i]);
+    }
+}
+
+void DetectionStats::NodeToPoint(const YAML::Node& node, cv::Point& point) {
+    assert(node != NULL);
+    assert(node.IsMap());
+    assert(node["x"] && node["y"]);
+    point = cv::Point(node["x"].as<int>(), node["y"].as<int>());
+}
+
+void DetectionStats::NodeToSize(const YAML::Node& node, cv::Size& size) {
+    assert(node != NULL);
+    assert(node.IsMap());
+    assert(node["width"] && node["height"]);
+    size = cv::Point(node["width"].as<int>(), node["height"].as<int>());
+}
+
 
 } /* namespace sonarlog_target_tracking */

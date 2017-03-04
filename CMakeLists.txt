@@ -9,9 +9,11 @@ option (COMPILE_DFT_PROC            OFF)
 option (COMPILE_VIDEO_GENERATOR     OFF)
 option (COMPILE_PREPROCESSING       OFF)
 option (COMPILE_DETECTION           OFF)
+option (COMPILE_EVALUATION          OFF)
 
 set ( COMPILE_PREPROCESSING ON )
 set ( COMPILE_DETECTION     ON )
+set ( COMPILE_EVALUATION    ON )
 
 add_project_dependency (base                  ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 add_project_dependency (rock_util             ${WORKSPACE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
