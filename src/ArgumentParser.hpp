@@ -12,33 +12,24 @@ public:
     ArgumentParser();
     virtual ~ArgumentParser();
 
-    std::vector<std::string> input_files() const {
-        return input_files_;
-    }
-
     std::string app_name() const {
         return app_name_;
     }
 
-    std::string stream_name() const {
-        return stream_name_;
+    std::string dataset_info_filename() const {
+        return dataset_info_filename_;
     }
 
-    std::vector<std::string> background_files() const {
-        return background_files_;
-    }
+    bool run(int argc, char **argv);
 
-    bool run(int argc, char const *argv[]);
 
 private:
 
     bool file_exists(std::string filename);
     std::string get_filename(std::string file_path);
 
-    std::vector<std::string> input_files_;
-    std::vector<std::string> background_files_;
-    std::string stream_name_;
     std::string app_name_;
+    std::string dataset_info_filename_;
 
 };
 

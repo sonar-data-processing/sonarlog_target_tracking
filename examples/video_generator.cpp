@@ -178,7 +178,7 @@ int main(int argc, char const *argv[]) {
         base::samples::Sonar sample;
         stream.next<base::samples::Sonar>(sample);
 
-        std::vector<int> beam_mapping = sonar_util::Converter::generate_beam_mapping_from_cartesian(sample.bins, Utilities::get_radians(sample.bearings),
+        std::vector<int> beam_mapping = sonar_util::Converter::generate_beam_mapping_from_cartesian(Utilities::get_radians(sample.bearings),
                                                                                                     sample.bin_count, sample.beam_count,
                                                                                                     frame_width, frame_height);
         process_sample(sample, frame_size, beam_mapping, segment_video, box_video);
@@ -187,8 +187,6 @@ int main(int argc, char const *argv[]) {
             process_sample(sample, frame_size, beam_mapping, segment_video, box_video);
         }
     }
-
-    return 0;
 
     return 0;
 }

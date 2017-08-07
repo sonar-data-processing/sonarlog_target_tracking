@@ -4,10 +4,11 @@
 #include <string>
 #include <vector>
 #include <base/samples/Sonar.hpp>
-#include "sonar_processing/SonarHolder.hpp"
-#include "sonarlog_target_tracking/DetectionStats.hpp"
-#include "rock_util/LogReader.hpp"
-#include "rock_util/Utilities.hpp"
+#include <sonar_processing/SonarHolder.hpp>
+#include <rock_util/LogReader.hpp>
+#include <rock_util/Utilities.hpp>
+#include "DetectionStats.hpp"
+#include "DatasetInfo.hpp"
 
 namespace sonarlog_target_tracking {
 
@@ -45,6 +46,10 @@ void load_samples(rock_util::LogStream& stream, std::vector<base::samples::Sonar
 void adjust_annotation(cv::Size size, const std::vector<cv::Point>& src_points, std::vector<cv::Point>& dst_points, cv::OutputArray annotation_mask);
 
 bool file_exists(std::string filename);
+
+void exec_samples(rock_util::LogStream& stream, int first_sample, int last_sample, void (*exec_samples_callback)(const base::samples::Sonar& sample, void *user_data), void *user_data = NULL);
+
+void exec_samples_from_dataset_entry(const DatasetInfoEntry& dataset_entry, void (*exec_samples_callback)(const base::samples::Sonar& sample, void *user_data), void *user_data = NULL);
 
 
 

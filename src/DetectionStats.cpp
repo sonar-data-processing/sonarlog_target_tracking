@@ -4,7 +4,7 @@
 namespace sonarlog_target_tracking {
 
 DetectionStats::DetectionStats(
-    const std::vector<std::vector<double> >& accuracy_levels, 
+    const std::vector<std::vector<double> >& accuracy_levels,
     const std::vector<std::vector<double> >& classifier_weights,
     const std::vector<std::vector<cv::RotatedRect> >& detection_results,
     const std::vector<cv::Size>& frame_sizes,
@@ -89,8 +89,8 @@ std::map<std::string, int> DetectionStats::SizeToMap(const cv::Size size) const 
 std::vector<std::map<std::string, float> > DetectionStats::RotatedRectVectorToMapVector(const std::vector<cv::RotatedRect>& rrects) const {
     std::vector<std::map<std::string, float> > vec(rrects.size());
     for (std::vector<cv::RotatedRect>::const_iterator it = rrects.begin(); it != rrects.end(); it++) {
-        vec[it-rrects.begin()] = RotatedRectToMap(*it);    
-    } 
+        vec[it-rrects.begin()] = RotatedRectToMap(*it);
+    }
     return vec;
 }
 
@@ -104,7 +104,7 @@ std::map<std::string, int> DetectionStats::PointToMap(const cv::Point& point) co
 std::vector<std::map<std::string, int> > DetectionStats::PointVectorToMapVector(const std::vector<cv::Point>& points) const {
     std::vector<std::map<std::string, int> > vec(points.size());
     for (std::vector<cv::Point>::const_iterator it = points.begin(); it != points.end(); it++) {
-        vec[it-points.begin()] = PointToMap(*it);   
+        vec[it-points.begin()] = PointToMap(*it);
     }
     return vec;
 }

@@ -567,11 +567,11 @@ int main(int argc, char const *argv[]) {
         std::vector<cv::Size> frame_sizes;
 
         // perform the testing
-        perform_svm_test(samples, annotations, "jequitaia_training.yml", accuracy_levels, 
+        perform_svm_test(samples, annotations, "jequitaia_training.yml", accuracy_levels,
             classifier_weights, detector_results, frame_sizes);
 
         // save detection result
-        sonarlog_target_tracking::common::save_detection_results(log_name+std::string("_detection_result.yml"), 
+        sonarlog_target_tracking::common::save_detection_results(log_name+std::string("_detection_result.yml"),
             accuracy_levels, classifier_weights, detector_results, frame_sizes, annotations);
     }
 }
