@@ -8,12 +8,13 @@ option (COMPILE_PREPROCESSING       OFF)
 option (COMPILE_DETECTION           OFF)
 option (COMPILE_EVALUATION          OFF)
 
-set ( COMPILE_CONVERT_TO_IMAGES ON )
-set ( COMPILE_DFT_PROC          ON )
-set ( COMPILE_VIDEO_GENERATOR   ON )
-set ( COMPILE_PREPROCESSING     ON )
-set ( COMPILE_DETECTION         OFF )
-set ( COMPILE_EVALUATION        ON )
+set ( COMPILE_CONVERT_TO_IMAGES OFF )
+set ( COMPILE_DFT_PROC          OFF )
+set ( COMPILE_VIDEO_GENERATOR   OFF )
+set ( COMPILE_PREPROCESSING      ON )
+set ( COMPILE_TRAINING           ON )
+set ( COMPILE_DETECTION          ON )
+set ( COMPILE_EVALUATION         ON )
 
 list(APPEND CMAKE_MODULE_PATH $ENV{SONAR_TOOLKIT_PREFIX}/base/cmake)
 
@@ -176,3 +177,48 @@ if (COMPILE_PREPROCESSING)
     )
 
 endif(COMPILE_PREPROCESSING)
+
+if (COMPILE_TRAINING)
+
+    message ( STATUS "Compile Training example")
+
+    add_executable (
+        sonarlog-training
+        examples/training.cpp
+        ${SOURCES}
+    )
+
+    target_link_libraries (
+        sonarlog-training
+        annotation_filereader
+        ${LIBS}
+    )
+
+    install (
+        TARGETS sonarlog-training
+        DESTINATION bin
+    )
+
+endif(COMPILE_TRAINING)
+
+if (COMPILE_EVALUATION)
+
+    message ( STATUS "Compile Training example")
+
+    add_executable (
+        sonarlog-evaluation
+        examples/evaluation.cpp
+        ${SOURCES}
+    )
+
+    target_link_libraries (
+        sonarlog-evaluation
+        ${LIBS}
+    )
+
+    install (
+        TARGETS sonarlog-evaluation
+        DESTINATION bin
+    )
+
+endif(COMPILE_EVALUATION)

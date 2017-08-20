@@ -15,6 +15,7 @@ struct Context {
     sonar_processing::SonarHolder sonar_holder;
 };
 
+
 void perform_sonar_image_preprocessing(Context& context) {
     cv::Mat cart_image = context.sonar_holder.cart_image();
     cv::Mat preprocessed_image;
@@ -28,7 +29,8 @@ void perform_sonar_image_preprocessing(Context& context) {
     cv::waitKey(25);
 }
 
-void sample_receiver_callback(const base::samples::Sonar& sample, void *user_data) {
+// receive samples from sonar log reader
+void sample_receiver_callback(const base::samples::Sonar& sample, int sample_index, void *user_data) {
     Context *context = reinterpret_cast<Context*>(user_data);
     sonarlog_target_tracking::common::load_sonar_holder(sample, context->sonar_holder);
     perform_sonar_image_preprocessing(*context);

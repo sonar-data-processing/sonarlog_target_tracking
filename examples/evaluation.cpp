@@ -1,70 +1,55 @@
-#include <stdint.h> 
 #include <cstdio>
 #include <iostream>
 #include <opencv2/opencv.hpp>
-#include "base/test_config.h"
-#include "sonar_processing/ImageUtil.hpp"
-#include "sonarlog_target_tracking/DetectionStats.hpp"
-
-using namespace sonar_processing;
-using namespace sonarlog_target_tracking;
-
-void detection_evaluate_from_file(const std::string& filename) {
-    sonarlog_target_tracking::DetectionStats stats(filename);
-
-    size_t total_frames = stats.frame_sizes().size();
-
-    for (size_t k = 0; k < total_frames; k++) {
-        cv::Size frame_size = stats.frame_sizes()[k];
-        std::vector<cv::Point> ground_truth_points = stats.annotations()[k];
-
-        cv::Mat ground_truth_mask = cv::Mat::zeros(frame_size, CV_8UC1);
-        image_util::create_min_area_rect_mask(ground_truth_points, ground_truth_mask);
-        cv::Mat ground_truth_mask_inv = 255-ground_truth_mask;
-
-        std::vector<cv::RotatedRect> detection_results = stats.detection_results()[k];
-        
-        cv::Mat1b detection_mask = cv::Mat1b::zeros(frame_size);
-        for (size_t l = 0; l < detection_results.size(); l++) {
-            cv::Mat1b mask = cv::Mat1b::zeros(frame_size);
-            image_util::create_rotated_rect_mask(detection_results[l], mask);
-            detection_mask+=mask;
-        }
-
-        cv::Mat detection_mask_inv = 255-detection_mask;
-
-        cv::Mat tp_mask, tn_mask, fp_mask, fn_mask;
-        cv::bitwise_and(ground_truth_mask, detection_mask, tp_mask);
-        cv::bitwise_and(ground_truth_mask_inv, detection_mask, fp_mask);
-        cv::bitwise_and(ground_truth_mask, detection_mask_inv, fn_mask);
-        cv::bitwise_and(ground_truth_mask_inv, detection_mask_inv, tn_mask);
-
-        cv::Mat rgb[] = {
-            fn_mask,
-            tp_mask,
-            fp_mask
-        };
-
-        cv::Mat3b canvas;
-        cv::merge(rgb, 3, canvas);
-        image_util::show_image("result", canvas, 2);
-        cv::waitKey(15);
-
-    }
-    
-}
+#include <boost/filesystem.hpp>
+#include <boost/program_options.hpp>
+#include "Common.hpp"
+#include "DetectionEval.hpp"
+#include "ROC.hpp"
 
 int main(int argc, char **argv) {
-    const std::string results_filename[] = {
-        DATA_PATH_STRING + "/results/20161206-1642_001196-002416_gemini.0_detection_result.yml"
-    };
+    std::string app_name = boost::filesystem::basename(argv[0]);
 
-    uint32_t sz = sizeof(results_filename)/sizeof(std::string);
+    boost::program_options::options_description desc("sonarlog target tracking evaluation");
 
-    for (uint32_t k = 0; k < sz; k++) {
-        std::cout << "Result filename: " << results_filename[k] << std::endl;
-        detection_evaluate_from_file(results_filename[k]);
+    desc.add_options()
+        ("evaluation-filename,i", boost::program_options::value<std::string>()->required(), "The CSV filename with evaluation data.")
+        ("help,h", "show the command line description");
+
+    boost::program_options::positional_options_description pd;
+
+    pd.add("evaluation-filename", 1);
+
+    boost::program_options::variables_map vm;
+
+    std::string evaluation_filename;
+
+    try {
+        boost::program_options::store(boost::program_options::command_line_parser(argc, argv).options(desc).positional(pd).run(), vm);
+
+        if (vm.count("help")) {
+            std::cout << desc << std::endl;
+            return 0;
+        }
+
+        if (vm.count("evaluation-filename")) {
+            evaluation_filename = vm["evaluation-filename"].as<std::string>();
+
+            if (!sonarlog_target_tracking::common::file_exists(evaluation_filename)) {
+                std::cerr << "ERROR: The dataset information file not found" << std::endl;
+                return -1;
+            }
+        }
+
+        boost::program_options::notify(vm);
+    } catch (boost::program_options::error& e) {
+        std::cerr << "ERROR: " << e.what() << std::endl;
+        std::cerr << desc << std::endl;
     }
+
+    sonarlog_target_tracking::DetectionEvalList detection_eval_list;
+    detection_eval_list.csv_read(evaluation_filename);
+    sonarlog_target_tracking::ROC roc(detection_eval_list.true_positive_rate_list, detection_eval_list.false_positive_rate_list);
 
     return 0;
 }

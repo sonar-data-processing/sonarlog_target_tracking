@@ -18,7 +18,7 @@ ArgumentParser::~ArgumentParser() {
 bool ArgumentParser::run(int argc, char **argv) {
     std::string app_name = boost::filesystem::basename(argv[0]);
 
-    program_options::options_description desc("create video from sonar scan log");
+    program_options::options_description desc("sonarlog target tracking");
 
     desc.add_options()
         ("dataset-info-filename,i", program_options::value<std::string>()->required(), "The YML file with the dataset information.")

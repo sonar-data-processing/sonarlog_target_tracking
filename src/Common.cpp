@@ -11,6 +11,11 @@ namespace sonarlog_target_tracking {
 
 namespace common {
 
+void clip_interval(int& from, int& to, int length) {
+    from = (from >= 1 && from <= length) ? from-1 : 0;
+    to = (to >= 1 && to <= length) ? to-1 : length-1;
+}
+
 void load_log_annotation(const std::string& logannotation_file, const std::string& annotation_name, std::vector<std::vector<cv::Point> >& annotation_points) {
     AnnotationFileReader annotation_file_reader(logannotation_file);
     std::vector<AnnotationFileReader::AnnotationMap> annotations = annotation_file_reader.read();
@@ -49,7 +54,7 @@ void load_samples(rock_util::LogStream& stream, std::vector<base::samples::Sonar
     printf("\n");
 }
 
-void adjust_annotation(cv::Size size, const std::vector<cv::Point>& src_points, std::vector<cv::Point>& dst_points, cv::OutputArray annotation_mask) {
+void adjust_annotation(cv::Size size, const std::vector<cv::Point>& src_points, std::vector<cv::Point>& dst_points, cv::Mat& annotation_mask) {
     std::vector<std::vector<cv::Point> > contours;
     contours.push_back(src_points);
     cv::Mat mask = cv::Mat::zeros(size, CV_8UC1);
@@ -66,33 +71,102 @@ bool file_exists(std::string filename) {
     return true;
 }
 
-void exec_samples(rock_util::LogStream& stream, int first_sample, int last_sample, void (*exec_samples_callback)(const base::samples::Sonar& sample, void *user_data), void *user_data) {
+void exec_samples(
+    rock_util::LogStream& stream,
+    int first_sample,
+    int last_sample,
+    EXEC_SAMPLE_CALLBACK exec_samples_callback,
+    void *user_data)
+{
     stream.set_current_sample_index(first_sample);
     do {
         base::samples::Sonar sample;
         stream.next<base::samples::Sonar>(sample);
-        exec_samples_callback(sample, user_data);
-    } while(stream.current_sample_index() < last_sample);
+        exec_samples_callback(sample, stream.current_sample_index()-1, user_data);
+    } while(stream.current_sample_index() <= last_sample);
 }
 
-void exec_samples_from_dataset_entry(const DatasetInfoEntry& dataset_entry, void (*exec_samples_callback)(const base::samples::Sonar& sample, void *user_data), void *user_data) {
+void exec_samples_from_dataset_entry(
+    const DatasetInfoEntry& dataset_entry,
+    EXEC_SAMPLE_CALLBACK exec_samples_callback,
+    void *user_data)
+{
     rock_util::LogReader reader(dataset_entry.log_filename);
-    std::cout << dataset_entry.to_string() << std::endl;
+    rock_util::LogStream stream = reader.stream(dataset_entry.stream_name);
 
+    int first_sample = dataset_entry.from_index;
+    int last_sample = dataset_entry.to_index;
+    clip_interval(first_sample, last_sample, stream.total_samples());
+    exec_samples(stream, first_sample, last_sample, exec_samples_callback, user_data);
+}
+
+void exec_training_samples_from_dataset_entry(
+    const DatasetInfoEntry& dataset_entry,
+    EXEC_SAMPLE_CALLBACK exec_samples_callback,
+    void *user_data)
+{
+    if (!dataset_entry.training_intervals.empty()) {
+        rock_util::LogReader reader(dataset_entry.log_filename);
+        rock_util::LogStream stream = reader.stream(dataset_entry.stream_name);
+
+        std::vector<SampleInterval>::const_iterator it = dataset_entry.training_intervals.begin();
+        for (it; it != dataset_entry.training_intervals.end(); it++) {
+            int first_sample = (*it).from;
+            int last_sample = (*it).to;
+            clip_interval(first_sample, last_sample, stream.total_samples());
+            exec_samples(stream, first_sample, last_sample, exec_samples_callback, user_data);
+        }
+    }
+
+}
+
+void load_training_data_from_dataset_entry(
+    const DatasetInfoEntry& dataset_entry,
+    std::vector<base::samples::Sonar>& training_samples,
+    std::vector<std::vector<cv::Point> >& training_annotations)
+{
+    if (dataset_entry.annotation_filename.empty()) {
+        throw std::runtime_error("There is no annotation filename for "+dataset_entry.log_filename+" entry.");
+    }
+
+    if (dataset_entry.annotation_name.empty()) {
+        throw std::runtime_error("There is no annotation name for "+dataset_entry.log_filename+" entry.");
+    }
+
+    if (dataset_entry.training_intervals.empty()) {
+        throw std::runtime_error("There is no training interval.");
+    }
+
+    rock_util::LogReader reader(dataset_entry.log_filename);
     rock_util::LogStream stream = reader.stream(dataset_entry.stream_name);
 
     std::vector<std::vector<cv::Point> > annotations;
-    if (!dataset_entry.annotation_filename.empty() &&
-        !dataset_entry.annotation_name.empty()) {
-        load_log_annotation(dataset_entry.annotation_filename, dataset_entry.annotation_name, annotations);
-        std::cout << "Annotation openned with success" << std::endl;
+    load_log_annotation(dataset_entry.annotation_filename, dataset_entry.annotation_name, annotations);
+
+    std::vector<SampleInterval>::const_iterator it = dataset_entry.training_intervals.begin();
+    printf("Loading log samples\n\033[s");
+    for (it; it != dataset_entry.training_intervals.end(); it++) {
+        int first_sample = (*it).from;
+        int last_sample = (*it).to;
+        clip_interval(first_sample, last_sample, stream.total_samples());
+        base::samples::Sonar sample;
+        stream.set_current_sample_index(first_sample);
+        do {
+            printf("\033[uLoading sample: %ld", stream.current_sample_index()+1);
+            fflush(stdout);
+
+            std::vector<cv::Point> annotation_points = annotations[stream.current_sample_index()];
+            training_annotations.push_back(annotation_points);
+
+            base::samples::Sonar sample;
+            stream.next<base::samples::Sonar>(sample);
+            training_samples.push_back(sample);
+
+        } while(stream.current_sample_index() <= last_sample);
     }
-
-    int first_sample = (dataset_entry.from_index >= 1 && dataset_entry.from_index <= stream.total_samples()) ? dataset_entry.from_index-1 : 0;
-    int last_sample = (dataset_entry.to_index >= 1 && dataset_entry.to_index <= stream.total_samples()) ? dataset_entry.to_index-1 : stream.total_samples()-1;
-
-    exec_samples(stream, first_sample, last_sample, exec_samples_callback, user_data);
+    printf("\n");
 }
+
 
 } /* namespace common */
 
