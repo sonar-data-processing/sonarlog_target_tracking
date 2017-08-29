@@ -63,6 +63,7 @@ struct TrainingSettings {
         output_directory = "";
         hog_training_scale_factor = 1.0;
         hog_show_descriptor = false;
+        show_positive_window = false;
         hog_window_size = cv::Size(-1, -1);
     }
 
@@ -71,11 +72,13 @@ struct TrainingSettings {
         const std::string& output_directory,
         double hog_training_scale_factor,
         bool hog_show_descriptor,
+        bool show_positive_window,
         cv::Size hog_window_size)
         : model_filename(model_filename)
         , output_directory(output_directory)
         , hog_training_scale_factor(hog_training_scale_factor)
         , hog_show_descriptor(false)
+        , show_positive_window(false)
         , hog_window_size(-1, -1)
     {
     }
@@ -103,6 +106,7 @@ struct TrainingSettings {
     std::string model_filename;
     double hog_training_scale_factor;
     bool hog_show_descriptor;
+    bool show_positive_window;
     cv::Size hog_window_size;
     std::string output_directory;
 };

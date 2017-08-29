@@ -145,6 +145,8 @@ void load_training_data_from_dataset_entry(
 
     std::vector<SampleInterval>::const_iterator it = dataset_entry.training_intervals.begin();
     printf("Loading log samples\n\033[s");
+
+    int samples_count = 0;
     for (it; it != dataset_entry.training_intervals.end(); it++) {
         int first_sample = (*it).from;
         int last_sample = (*it).to;
@@ -161,10 +163,10 @@ void load_training_data_from_dataset_entry(
             base::samples::Sonar sample;
             stream.next<base::samples::Sonar>(sample);
             training_samples.push_back(sample);
-
+            samples_count++;
         } while(stream.current_sample_index() <= last_sample);
     }
-    printf("\n");
+    printf("\nTotal training log samples: %d\n", samples_count);
 }
 
 

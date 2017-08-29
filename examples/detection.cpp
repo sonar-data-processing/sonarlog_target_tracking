@@ -83,7 +83,7 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
     fflush(stdout);
 
     image_util::show_image("output", output_image, 2);
-    cv::waitKey(-1);
+    cv::waitKey(15);
 }
 
 int main(int argc, char **argv) {
@@ -101,6 +101,7 @@ int main(int argc, char **argv) {
     context.hog_detector.set_windown_size(dataset_info.training_settings().hog_window_size);
     context.hog_detector.set_training_scale_factor(dataset_info.training_settings().hog_training_scale_factor);
     context.hog_detector.set_show_descriptor(dataset_info.training_settings().hog_show_descriptor);
+    std::cout << "SVM Model Training: " << dataset_info.training_settings().full_model_filename() << std::endl;
     context.hog_detector.LoadSVMTrain(dataset_info.training_settings().full_model_filename());
     context.sample_count = 0;
     context.detected_sample_count = 0;

@@ -49,6 +49,7 @@ void DatasetInfo::LoadTrainingSettings(const YAML::Node& node) {
     assert(node["hog-settings"].Type() == YAML::NodeType::Map);
     assert(node["hog-settings"]["training-scale-factor"]);
     assert(node["hog-settings"]["show-descriptor"]);
+    assert(node["hog-settings"]["show-positive-window"]);
     assert(node["hog-settings"]["window-size"]);
     assert(node["hog-settings"]["window-size"].Type() == YAML::NodeType::Map);
     assert(node["hog-settings"]["window-size"]["width"]);
@@ -58,6 +59,7 @@ void DatasetInfo::LoadTrainingSettings(const YAML::Node& node) {
     training_settings_.output_directory = node["output-directory"].as<std::string>();
     training_settings_.hog_training_scale_factor = node["hog-settings"]["training-scale-factor"].as<double>();
     training_settings_.hog_show_descriptor = node["hog-settings"]["show-descriptor"].as<bool>();
+    training_settings_.show_positive_window = node["hog-settings"]["show-positive-window"].as<bool>();
     training_settings_.hog_window_size.width = node["hog-settings"]["window-size"]["width"].as<int>();
     training_settings_.hog_window_size.height = node["hog-settings"]["window-size"]["height"].as<int>();
 }

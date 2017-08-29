@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
     hog_detector.set_windown_size(dataset_info.training_settings().hog_window_size);
     hog_detector.set_training_scale_factor(dataset_info.training_settings().hog_training_scale_factor);
     hog_detector.set_show_descriptor(dataset_info.training_settings().hog_show_descriptor);
+    hog_detector.set_show_positive_window(dataset_info.training_settings().show_positive_window);
     hog_detector.Train(training_samples, training_annotations, dataset_info.training_settings().full_model_filename());
     std::cout << "HOG Detector training finished" << std::endl;
 
