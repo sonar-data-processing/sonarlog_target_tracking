@@ -4,35 +4,67 @@
 #include <rock_util/LogReader.hpp>
 #include <sonar_processing/SonarImagePreprocessing.hpp>
 #include <sonar_processing/SonarHolder.hpp>
+#include <sonar_processing/ImageFiltering.hpp>
+#include <sonar_processing/Denoising.hpp>
 #include "Common.hpp"
 #include "ArgumentParser.hpp"
 #include "DatasetInfo.hpp"
+
+#include <stdio.h>
 
 using namespace sonar_processing;
 using namespace sonarlog_target_tracking;
 
 struct Context {
-    sonar_processing::SonarHolder sonar_holder;
+    DatasetInfo dataset_info;
+    SonarHolder sonar_holder;
+    SonarImagePreprocessing sonar_image_preprocessing;
 };
 
-
 void perform_sonar_image_preprocessing(Context& context) {
-    cv::Mat cart_image = context.sonar_holder.cart_image();
+    cv::Mat source_image = context.sonar_holder.cart_image();
+    cv::Mat source_mask = context.sonar_holder.cart_image_mask();
     cv::Mat preprocessed_image;
     cv::Mat preprocessed_mask;
 
-    SonarImagePreprocessing sonar_image_preprocessing;
-    sonar_image_preprocessing.Apply(context.sonar_holder, preprocessed_image, preprocessed_mask, 0.5);
+    if (context.dataset_info.preprocessing_settings().image_max_size != cv::Size(-1, -1)) {
+        context.sonar_image_preprocessing.Apply(
+            source_image,
+            source_mask,
+            preprocessed_image,
+            preprocessed_mask);
 
-    sonar_processing::image_util::show_image("cart_image", cart_image, 2);
-    sonar_processing::image_util::show_image("preprocessed_image", preprocessed_image, 2);
+        cv::imshow("source_image", source_image);
+        cv::imshow("preprocessed_image", preprocessed_image);
+    }
+    else {
+        context.sonar_image_preprocessing.Apply(
+            source_image,
+            source_mask,
+            preprocessed_image,
+            preprocessed_mask,
+            context.dataset_info.preprocessing_settings().scale_factor);
+
+        image_util::show_image("source_image", source_image, 2);
+        image_util::show_image("preprocessed_image", preprocessed_image, 2);
+    }
+
     cv::waitKey(25);
 }
 
 // receive samples from sonar log reader
 void sample_receiver_callback(const base::samples::Sonar& sample, int sample_index, void *user_data) {
     Context *context = reinterpret_cast<Context*>(user_data);
-    sonarlog_target_tracking::common::load_sonar_holder(sample, context->sonar_holder);
+
+    if (context->dataset_info.preprocessing_settings().image_max_size != cv::Size(-1, -1)) {
+        sonarlog_target_tracking::common::load_sonar_holder(
+            sample,
+            context->sonar_holder,
+            context->dataset_info.preprocessing_settings().image_max_size);
+    }
+    else {
+        sonarlog_target_tracking::common::load_sonar_holder(sample, context->sonar_holder);
+    }
     perform_sonar_image_preprocessing(*context);
 }
 
@@ -43,10 +75,15 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    sonarlog_target_tracking::DatasetInfo dataset_info(argument_parser.dataset_info_filename());
-    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = dataset_info.entries();
-
     Context context;
+
+    context.dataset_info =  DatasetInfo(argument_parser.dataset_info_filename());
+    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = context.dataset_info.entries();
+    std::cout << context.dataset_info.preprocessing_settings().to_string() << std::endl;
+
+    common::load_preprocessing_settings(
+        context.dataset_info.preprocessing_settings(),
+        context.sonar_image_preprocessing);
 
     for (size_t i=0; i<entries.size(); i++) {
         common::exec_samples_from_dataset_entry(entries[i], sample_receiver_callback, &context);

@@ -4,7 +4,10 @@
 #include <string>
 #include <vector>
 #include <base/samples/Sonar.hpp>
+#include <sonar_processing/HOGDetector.hpp>
+#include <sonar_processing/ImageFiltering.hpp>
 #include <sonar_processing/SonarHolder.hpp>
+#include <sonar_processing/SonarImagePreprocessing.hpp>
 #include <rock_util/LogReader.hpp>
 #include <rock_util/Utilities.hpp>
 #include "DatasetInfo.hpp"
@@ -28,12 +31,13 @@ typedef void (*EXEC_SAMPLE_CALLBACK)(
     int sample_index,
     void *user_data);
 
-inline void load_sonar_holder(const base::samples::Sonar& sample, sonar_processing::SonarHolder& sonar_holder) {
+inline void load_sonar_holder(const base::samples::Sonar& sample, sonar_processing::SonarHolder& sonar_holder, cv::Size sonar_size = cv::Size(-1, -1)) {
     sonar_holder.Reset(sample.bins,
         rock_util::Utilities::get_radians(sample.bearings),
         sample.beam_width.getRad(),
         sample.bin_count,
-        sample.beam_count);
+        sample.beam_count,
+        sonar_size);
 }
 
 void load_log_annotation(const std::string& logannotation_file, const std::string& annotation_name, std::vector<std::vector<cv::Point> >& annotation_points);
@@ -69,6 +73,57 @@ void load_training_data_from_dataset_entry(
     const DatasetInfoEntry& dataset_entry,
     std::vector<base::samples::Sonar>& training_samples,
     std::vector<std::vector<cv::Point> >& training_annotations);
+
+inline
+sonar_processing::image_filtering::BorderFilterType border_filter_type(const std::string& type) {
+
+    if (type == "scharr") {
+        return sonar_processing::image_filtering::kSCharr;
+    }
+
+    if (type == "prewitt") {
+        return sonar_processing::image_filtering::kPrewitt;
+    }
+
+    return sonar_processing::image_filtering::kSobel;
+}
+
+inline
+sonar_processing::SonarImagePreprocessing::MeanDifferenceFilterSource mean_diff_filter_source(const std::string& type) {
+
+    if (type == "border") {
+        return sonar_processing::SonarImagePreprocessing::kBorder;
+    }
+
+    return sonar_processing::SonarImagePreprocessing::kEnhanced;
+}
+
+inline
+void load_preprocessing_settings(
+    const PreprocessingSettings& settings,
+    sonar_processing::SonarImagePreprocessing& preprocessing) {
+
+    preprocessing.set_roi_extract_thresh(settings.roi_extract_thresh);
+    preprocessing.set_roi_extract_start_bin(settings.roi_extract_start_bin);
+    preprocessing.set_mean_filter_ksize(settings.mean_filter_ksize);
+    preprocessing.set_mean_difference_filter_enable(settings.mean_diff_filter_enable);
+    preprocessing.set_mean_difference_filter_ksize(settings.mean_diff_filter_ksize);
+    preprocessing.set_mean_difference_filter_source(mean_diff_filter_source(settings.mean_diff_filter_source));
+    preprocessing.set_median_blur_filter_ksize(settings.median_blur_filter_ksize);
+    preprocessing.set_border_filter_type(border_filter_type(settings.border_filter_type));
+    preprocessing.set_border_filter_enable(settings.border_filter_enable);
+}
+
+inline
+void load_training_settings(
+    const TrainingSettings& settings,
+    sonar_processing::HOGDetector& detector) {
+    detector.set_windown_size(settings.hog_window_size);
+    detector.set_training_scale_factor(settings.hog_training_scale_factor);
+    detector.set_show_descriptor(settings.hog_show_descriptor);
+    detector.set_show_positive_window(settings.show_positive_window);
+}
+
 
 } /* namespace common */
 

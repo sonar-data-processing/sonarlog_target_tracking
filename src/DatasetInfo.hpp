@@ -111,6 +111,101 @@ struct TrainingSettings {
     std::string output_directory;
 };
 
+struct PreprocessingSettings {
+
+    PreprocessingSettings()
+    {
+        roi_extract_thresh = 0.05;
+        roi_extract_start_bin = 30;
+        mean_filter_ksize = 5;
+        mean_diff_filter_enable = true;
+        mean_diff_filter_ksize = 15;
+        median_blur_filter_ksize = 3;
+        scale_factor = 0.5;
+        border_filter_type  = "sobel";
+        mean_diff_filter_source = "enhanced";
+        border_filter_enable = true;
+        image_max_size = cv::Size(-1, -1);
+    }
+
+    PreprocessingSettings(
+        double roi_extract_thresh,
+        int roi_extract_start_bin,
+        int mean_filter_ksize,
+        bool mean_diff_filter_enable,
+        int mean_diff_filter_ksize,
+        std::string mean_diff_filter_source,
+        int median_blur_filter_ksize,
+        const std::string& border_filter_type,
+        bool border_filter_enable,
+        double scale_factor,
+        const cv::Size& image_max_size)
+        : roi_extract_thresh(roi_extract_thresh)
+        , roi_extract_start_bin(roi_extract_start_bin)
+        , mean_filter_ksize(mean_filter_ksize)
+        , mean_diff_filter_enable(mean_diff_filter_enable)
+        , mean_diff_filter_ksize(mean_diff_filter_ksize)
+        , mean_diff_filter_source(mean_diff_filter_source)
+        , median_blur_filter_ksize(median_blur_filter_ksize)
+        , border_filter_type(border_filter_type)
+        , border_filter_enable(border_filter_enable)
+        , scale_factor(scale_factor)
+        , image_max_size(image_max_size)
+    {
+    }
+
+    std::string to_string() const {
+        std::stringstream ss;
+        ss << "roi_extract_thresh: " << roi_extract_thresh << "\n";
+        ss << "roi_extract_start_bin: " << roi_extract_start_bin << "\n";
+        ss << "mean_filter_ksize: " << mean_filter_ksize << "\n";
+        ss << "mean_diff_filter_ksize: " << mean_diff_filter_ksize << "\n";
+        ss << "mean_diff_filter_enable: " << mean_diff_filter_enable << "\n";
+        ss << "mean_diff_filter_source: " << mean_diff_filter_source << "\n";
+        ss << "border_filter_type: " << border_filter_type << "\n";
+        ss << "border_filter_enable: " << border_filter_enable << "\n";
+        ss << "scale_factor: " << scale_factor << "\n";
+        ss << "image_max_size: " << image_max_size << "\n";
+        return ss.str();
+    }
+
+
+    double roi_extract_thresh;
+    double scale_factor;
+
+    int roi_extract_start_bin;
+    int mean_filter_ksize;
+    int mean_diff_filter_ksize;
+    int median_blur_filter_ksize;
+
+    std::string mean_diff_filter_source;
+    std::string border_filter_type;
+
+    bool mean_diff_filter_enable;
+    bool border_filter_enable;
+
+    cv::Size image_max_size;
+};
+
+struct DetectionSettings {
+
+    DetectionSettings()
+    {
+        evaluation_filename = "eval.csv";
+    }
+
+    DetectionSettings(
+        const std::string& evaluation_filename)
+        : evaluation_filename(evaluation_filename)
+    {
+    }
+
+    std::string evaluation_filename;
+
+};
+
+
+
 class DatasetInfo
 {
 
@@ -135,11 +230,24 @@ public:
         return training_settings_;
     }
 
+    // returns preprocessing settings
+    const PreprocessingSettings& preprocessing_settings() {
+        return preprocessing_settings_;
+    }
+
+    const DetectionSettings& detection_settings() {
+        return detection_settings_;
+    }
+
 private:
 
     void LoadLogEntries(const YAML::Node& node);
 
+    void LoadPreprocessingSettings(const YAML::Node& node);
+
     void LoadTrainingSettings(const YAML::Node& node);
+
+    void LoadDetectionSettings(const YAML::Node& node);
 
     void NodeToEntry(const YAML::Node& node, DatasetInfoEntry& entry);
 
@@ -148,6 +256,8 @@ private:
     std::vector<DatasetInfoEntry> entries_;
 
     TrainingSettings training_settings_;
+    PreprocessingSettings preprocessing_settings_;
+    DetectionSettings detection_settings_;
 
 };
 

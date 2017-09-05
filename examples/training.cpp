@@ -19,6 +19,14 @@ int main(int argc, char **argv) {
     sonarlog_target_tracking::DatasetInfo dataset_info(argument_parser.dataset_info_filename());
     std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = dataset_info.entries();
 
+    sonar_processing::HOGDetector hog_detector;
+    sonar_processing::SonarImagePreprocessing preprocessing;
+
+    sonarlog_target_tracking::common::load_training_settings(dataset_info.training_settings(), hog_detector);
+    sonarlog_target_tracking::common::load_preprocessing_settings(dataset_info.preprocessing_settings(), preprocessing);
+    hog_detector.set_sonar_image_processing(preprocessing);
+    hog_detector.set_sonar_image_size(dataset_info.preprocessing_settings().image_max_size);
+
     std::vector<base::samples::Sonar> training_samples;
     std::vector<std::vector<cv::Point> > training_annotations;
 
@@ -28,11 +36,6 @@ int main(int argc, char **argv) {
 
     std::cout << "Total training samples: " << training_samples.size() << std::endl;
     std::cout << "HOG Detector training..." << std::endl;
-    sonar_processing::HOGDetector hog_detector;
-    hog_detector.set_windown_size(dataset_info.training_settings().hog_window_size);
-    hog_detector.set_training_scale_factor(dataset_info.training_settings().hog_training_scale_factor);
-    hog_detector.set_show_descriptor(dataset_info.training_settings().hog_show_descriptor);
-    hog_detector.set_show_positive_window(dataset_info.training_settings().show_positive_window);
     hog_detector.Train(training_samples, training_annotations, dataset_info.training_settings().full_model_filename());
     std::cout << "HOG Detector training finished" << std::endl;
 

@@ -24,6 +24,7 @@ void load_log_annotation(const std::string& logannotation_file, const std::strin
         return;
     }
 
+    annotation_points.clear();
     annotation_points.resize(annotations.size());
 
     for (size_t i = 0; i < annotations.size(); i++) {
@@ -125,6 +126,10 @@ void load_training_data_from_dataset_entry(
     std::vector<base::samples::Sonar>& training_samples,
     std::vector<std::vector<cv::Point> >& training_annotations)
 {
+    if (dataset_entry.training_intervals.empty()) {
+        return;
+    }
+
     if (dataset_entry.annotation_filename.empty()) {
         throw std::runtime_error("There is no annotation filename for "+dataset_entry.log_filename+" entry.");
     }
@@ -133,9 +138,6 @@ void load_training_data_from_dataset_entry(
         throw std::runtime_error("There is no annotation name for "+dataset_entry.log_filename+" entry.");
     }
 
-    if (dataset_entry.training_intervals.empty()) {
-        throw std::runtime_error("There is no training interval.");
-    }
 
     rock_util::LogReader reader(dataset_entry.log_filename);
     rock_util::LogStream stream = reader.stream(dataset_entry.stream_name);
