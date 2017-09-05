@@ -72,7 +72,7 @@ void DetectionEval::CalculateIntersectionArea(
     true_positive_rate_ = true_positive_ / (true_positive_ + false_negative_);
     false_positive_rate_ = false_positive_ / (false_positive_ + true_negative_);
 
-    accuracy_ = (true_positive_ + true_negative_) / (true_positive_ + false_positive_ + true_negative_ + false_negative_);
+    accuracy_ = (true_positive_) / (true_positive_ + false_positive_ + false_negative_);
 }
 
 } // namespace sonarlog_target_tracking
