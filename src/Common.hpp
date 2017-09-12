@@ -16,16 +16,6 @@ namespace sonarlog_target_tracking {
 
 namespace common {
 
-template <typename T>
-struct IndexComparator {
-    IndexComparator(std::vector<T> vec) : vec_(vec) {}
-
-    bool operator() (size_t i, size_t j) { return vec_[i]<vec_[j]; }
-
-private:
-    std::vector<T> vec_;
-};
-
 typedef void (*EXEC_SAMPLE_CALLBACK)(
     const base::samples::Sonar& sample,
     int sample_index,
@@ -122,6 +112,7 @@ void load_training_settings(
     detector.set_training_scale_factor(settings.hog_training_scale_factor);
     detector.set_show_descriptor(settings.hog_show_descriptor);
     detector.set_show_positive_window(settings.show_positive_window);
+    detector.set_positive_input_validate(settings.positive_input_validate);
 }
 
 

@@ -120,6 +120,11 @@ void DatasetInfo::LoadTrainingSettings(const YAML::Node& node) {
     training_settings_.show_positive_window = node["hog-settings"]["show-positive-window"].as<bool>();
     training_settings_.hog_window_size.width = node["hog-settings"]["window-size"]["width"].as<int>();
     training_settings_.hog_window_size.height = node["hog-settings"]["window-size"]["height"].as<int>();
+
+    if (node["positive-input-validate"]) {
+        training_settings_.positive_input_validate = node["positive-input-validate"].as<bool>();
+    }
+
 }
 
 void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
@@ -128,6 +133,37 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
 
     if (node["evaluation-filename"]) {
         detection_settings_.evaluation_filename = node["evaluation-filename"].as<std::string>();
+    }
+
+    if (node["show-classifier-weights"]) {
+        detection_settings_.show_classifier_weights = node["show-classifier-weights"].as<bool>();
+    }
+
+    if (node["enable-location-best-weight-filter"]) {
+        detection_settings_.enable_location_best_weight_filter = node["enable-location-best-weight-filter"].as<bool>();
+    }
+
+    if (node["detection-scale-factor"]) {
+        detection_settings_.detection_scale_factor = node["detection-scale-factor"].as<double>();
+    }
+
+    if (node["find-target-orientation-enable"]) {
+        detection_settings_.find_target_orientation_enable = node["find-target-orientation-enable"].as<bool>();
+    }
+
+    if (node["find-target-orientation-step"]) {
+        detection_settings_.find_target_orientation_step = node["find-target-orientation-step"].as<double>();
+    }
+
+    if (node["hog-detector-settings"] && node["hog-detector-settings"].Type() == YAML::NodeType::Map) {
+        if (node["hog-detector-settings"]["scale"]) {
+            detection_settings_.hog_detector_scale = node["hog-detector-settings"]["scale"].as<double>();
+        }
+
+        if (node["hog-detector-settings"]["stride"]) {
+            int stride = node["hog-detector-settings"]["stride"].as<int>();
+            detection_settings_.hog_detector_stride = cv::Size(stride, stride);
+        }
     }
 }
 

@@ -64,6 +64,7 @@ struct TrainingSettings {
         hog_training_scale_factor = 1.0;
         hog_show_descriptor = false;
         show_positive_window = false;
+        positive_input_validate = false;
         hog_window_size = cv::Size(-1, -1);
     }
 
@@ -73,12 +74,14 @@ struct TrainingSettings {
         double hog_training_scale_factor,
         bool hog_show_descriptor,
         bool show_positive_window,
+        bool positive_input_validate,
         cv::Size hog_window_size)
         : model_filename(model_filename)
         , output_directory(output_directory)
         , hog_training_scale_factor(hog_training_scale_factor)
         , hog_show_descriptor(false)
         , show_positive_window(false)
+        , positive_input_validate(false)
         , hog_window_size(-1, -1)
     {
     }
@@ -89,6 +92,7 @@ struct TrainingSettings {
         ss << "output_directory: " << output_directory << "\n";
         ss << "hog_training_scale_factor: " << hog_training_scale_factor << "\n";
         ss << "hog_show_descriptor: " << hog_show_descriptor << "\n";
+        ss << "positive_input_validate: " << positive_input_validate << "\n";
         ss << "hog_window_size:\n";
         ss << "  - width: " << hog_window_size.width << "\n";
         ss << "  - height: " << hog_window_size.height << "\n";
@@ -107,6 +111,7 @@ struct TrainingSettings {
     double hog_training_scale_factor;
     bool hog_show_descriptor;
     bool show_positive_window;
+    bool positive_input_validate;
     cv::Size hog_window_size;
     std::string output_directory;
 };
@@ -192,16 +197,59 @@ struct DetectionSettings {
     DetectionSettings()
     {
         evaluation_filename = "eval.csv";
+        show_classifier_weights = false;
+        enable_location_best_weight_filter = false;
+        hog_detector_scale = 1.5;
+        hog_detector_stride = cv::Size(8, 8);
+        detection_scale_factor = 0.7;
+        find_target_orientation_enable = false;
+        find_target_orientation_step = true;
+
     }
 
     DetectionSettings(
-        const std::string& evaluation_filename)
+        const std::string& evaluation_filename,
+        bool show_classifier_weights,
+        bool enable_location_best_weight_filter,
+        double hog_detector_scale,
+        const cv::Size& hog_detector_stride,
+        double detection_scale_factor,
+        bool find_target_orientation_enable,
+        double find_target_orientation_step)
         : evaluation_filename(evaluation_filename)
+        , show_classifier_weights(show_classifier_weights)
+        , enable_location_best_weight_filter(enable_location_best_weight_filter)
+        , hog_detector_scale(hog_detector_scale)
+        , hog_detector_stride(hog_detector_stride)
+        , detection_scale_factor(detection_scale_factor)
+        , find_target_orientation_enable(find_target_orientation_enable)
+        , find_target_orientation_step(find_target_orientation_step)
     {
+    }
+
+    std::string to_string() const {
+        std::stringstream ss;
+        ss << "evaluation_filename: " << evaluation_filename << "\n";
+        ss << "show_classifier_weights: " << show_classifier_weights << "\n";
+        ss << "enable_location_best_weight_filter: " << enable_location_best_weight_filter << "\n";
+        ss << "hog_detector_scale: " << hog_detector_scale << "\n";
+        ss << "hog_detector_stride: " << hog_detector_stride << "\n";
+        ss << "find_target_orientation_enable: " << find_target_orientation_enable << "\n";
+        ss << "find_target_orientation_step: " << find_target_orientation_step << "\n";
+        return ss.str();
     }
 
     std::string evaluation_filename;
 
+    bool show_classifier_weights;
+    bool enable_location_best_weight_filter;
+
+    double hog_detector_scale;
+    cv::Size hog_detector_stride;
+
+    double detection_scale_factor;
+    bool find_target_orientation_enable;
+    double find_target_orientation_step;
 };
 
 

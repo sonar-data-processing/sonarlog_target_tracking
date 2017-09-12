@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
     hog_detector.set_sonar_image_processing(preprocessing);
     hog_detector.set_sonar_image_size(dataset_info.preprocessing_settings().image_max_size);
 
+
     std::vector<base::samples::Sonar> training_samples;
     std::vector<std::vector<cv::Point> > training_annotations;
 

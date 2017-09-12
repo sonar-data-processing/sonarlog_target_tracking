@@ -14,7 +14,6 @@ set ( COMPILE_VIDEO_GENERATOR   OFF )
 set ( COMPILE_PREPROCESSING      ON )
 set ( COMPILE_TRAINING           ON )
 set ( COMPILE_DETECTION          ON )
-set ( COMPILE_EVALUATION         ON )
 
 list(APPEND CMAKE_MODULE_PATH $ENV{SONAR_TOOLKIT_PREFIX}/base/cmake)
 
@@ -200,25 +199,3 @@ if (COMPILE_TRAINING)
     )
 
 endif(COMPILE_TRAINING)
-
-if (COMPILE_EVALUATION)
-
-    message ( STATUS "Compile Training example")
-
-    add_executable (
-        sonarlog-evaluation
-        examples/evaluation.cpp
-        ${SOURCES}
-    )
-
-    target_link_libraries (
-        sonarlog-evaluation
-        ${LIBS}
-    )
-
-    install (
-        TARGETS sonarlog-evaluation
-        DESTINATION bin
-    )
-
-endif(COMPILE_EVALUATION)
