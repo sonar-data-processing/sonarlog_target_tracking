@@ -20,6 +20,14 @@ public:
         return dataset_info_filename_;
     }
 
+    std::string evaluation_settings_filename() const {
+        return evaluation_settings_filename_;
+    }
+
+    bool show_detection_result() const {
+        return show_detection_result_;
+    }
+
     bool run(int argc, char **argv);
 
 
@@ -30,6 +38,8 @@ private:
 
     std::string app_name_;
     std::string dataset_info_filename_;
+    std::string evaluation_settings_filename_;
+    bool show_detection_result_;
 
 };
 

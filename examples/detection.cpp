@@ -95,19 +95,17 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
     if (result) {
 
         if (locations.size() > 1 && pContext->dataset_info.detection_settings().enable_location_best_weight_filter) {
-            std::vector<size_t> indices(weights.size());
-            for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
-            std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
-            std::reverse(indices.begin(), indices.end());
 
-            double best_weight = weights[indices[0]];
-            cv::RotatedRect best_location = locations[indices[0]];
+            size_t index = sonarlog_target_tracking::common::find_best_weight_location_index(weights);
+
+            double weight = weights[index];
+            cv::RotatedRect loc = locations[index];
 
             weights.clear();
             locations.clear();
 
-            weights.push_back(best_weight);
-            locations.push_back(best_location);
+            weights.push_back(weight);
+            locations.push_back(loc);
         }
 
         target_orientation = locations[0].angle;
@@ -129,8 +127,6 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
     DetectionEval detection_eval(locations, annotations, output_image.size());
 
     cv::imshow("overlap_region_image", detection_eval.overlap_region_image());
-
-    if (pContext->sample_count == 0) printf("\033[s");
 
     pContext->sample_count++;
 

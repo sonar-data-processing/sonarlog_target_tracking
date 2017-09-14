@@ -274,16 +274,16 @@ public:
     }
 
     // returns training settings
-    const TrainingSettings& training_settings() {
+    TrainingSettings training_settings() const {
         return training_settings_;
     }
 
     // returns preprocessing settings
-    const PreprocessingSettings& preprocessing_settings() {
+    PreprocessingSettings preprocessing_settings() const {
         return preprocessing_settings_;
     }
 
-    const DetectionSettings& detection_settings() {
+    DetectionSettings detection_settings() const {
         return detection_settings_;
     }
 

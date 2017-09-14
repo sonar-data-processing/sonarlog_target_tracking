@@ -8,6 +8,7 @@
 #include <sonar_processing/ImageFiltering.hpp>
 #include <sonar_processing/SonarHolder.hpp>
 #include <sonar_processing/SonarImagePreprocessing.hpp>
+#include <sonar_processing/Utils.hpp>
 #include <rock_util/LogReader.hpp>
 #include <rock_util/Utilities.hpp>
 #include "DatasetInfo.hpp"
@@ -33,6 +34,11 @@ inline void load_sonar_holder(const base::samples::Sonar& sample, sonar_processi
 void load_log_annotation(const std::string& logannotation_file, const std::string& annotation_name, std::vector<std::vector<cv::Point> >& annotation_points);
 
 void load_samples(rock_util::LogStream& stream, std::vector<base::samples::Sonar>& samples, size_t total_samples=-1);
+
+void load_samples_from_dataset_entry(
+    const DatasetInfoEntry& dataset_entry,
+    std::vector<base::samples::Sonar>& result_samples,
+    std::vector<std::vector<cv::Point> >& result_annotations);
 
 void adjust_annotation(
     cv::Size size,
@@ -113,6 +119,15 @@ void load_training_settings(
     detector.set_show_descriptor(settings.hog_show_descriptor);
     detector.set_show_positive_window(settings.show_positive_window);
     detector.set_positive_input_validate(settings.positive_input_validate);
+}
+
+inline size_t find_best_weight_location_index(const std::vector<double>& weights)
+{
+    std::vector<size_t> indices(weights.size());
+    for (size_t i = 0; i < indices.size(); i++) indices[i]=i;
+    std::sort(indices.begin(), indices.end(), sonar_processing::utils::IndexComparator<double>(weights));
+    std::reverse(indices.begin(), indices.end());
+    return indices[0];
 }
 
 
