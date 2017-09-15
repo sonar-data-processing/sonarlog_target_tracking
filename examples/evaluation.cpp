@@ -97,8 +97,13 @@ void perform_hog_detector_test(
 
     for (size_t i = 0; i < test_samples.size(); i++) {
 
-        sonarlog_target_tracking::common::load_sonar_holder(test_samples[i], sonar_holder, preprocessing_settings.image_max_size);
+        if (test_annotations[i].empty()) {
+            continue;
+        }
+
         std::vector<cv::Point> annotations = test_annotations[i];
+
+        sonarlog_target_tracking::common::load_sonar_holder(test_samples[i], sonar_holder, preprocessing_settings.image_max_size);
 
         if (preprocessing_settings.image_max_size != cv::Size(-1, -1)) {
             image_util::resize_points(
