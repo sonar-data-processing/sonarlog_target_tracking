@@ -179,9 +179,11 @@ int main(int argc, char **argv) {
     context.hog_detector.set_windown_size(context.dataset_info.training_settings().hog_window_size);
     context.hog_detector.set_show_descriptor(context.dataset_info.training_settings().hog_show_descriptor);
     context.hog_detector.set_detection_scale_factor(context.dataset_info.detection_settings().detection_scale_factor);
+    context.hog_detector.set_detection_minimum_weight(context.dataset_info.detection_settings().detection_minimum_weight);
     context.hog_detector.set_window_stride(context.dataset_info.detection_settings().hog_detector_stride);
     context.hog_detector.set_image_scale(context.dataset_info.detection_settings().hog_detector_scale);
     context.hog_detector.set_orientation_step(context.dataset_info.detection_settings().find_target_orientation_step);
+    context.hog_detector.set_orientation_range(context.dataset_info.detection_settings().find_target_orientation_range);
 
     std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = context.dataset_info.entries();
 

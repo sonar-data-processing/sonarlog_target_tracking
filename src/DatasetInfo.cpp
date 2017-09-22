@@ -147,12 +147,20 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
         detection_settings_.detection_scale_factor = node["detection-scale-factor"].as<double>();
     }
 
+    if (node["detection-minimum-weight"]) {
+        detection_settings_.detection_minimum_weight = node["detection-minimum-weight"].as<double>();
+    }
+
     if (node["find-target-orientation-enable"]) {
         detection_settings_.find_target_orientation_enable = node["find-target-orientation-enable"].as<bool>();
     }
 
     if (node["find-target-orientation-step"]) {
         detection_settings_.find_target_orientation_step = node["find-target-orientation-step"].as<double>();
+    }
+
+    if (node["find-target-orientation-range"]) {
+        detection_settings_.find_target_orientation_range = node["find-target-orientation-range"].as<double>();
     }
 
     if (node["hog-detector-settings"] && node["hog-detector-settings"].Type() == YAML::NodeType::Map) {

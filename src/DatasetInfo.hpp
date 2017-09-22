@@ -204,7 +204,8 @@ struct DetectionSettings {
         detection_scale_factor = 0.7;
         find_target_orientation_enable = false;
         find_target_orientation_step = true;
-
+        find_target_orientation_range = 15;
+        detection_minimum_weight = 0;
     }
 
     DetectionSettings(
@@ -214,16 +215,20 @@ struct DetectionSettings {
         double hog_detector_scale,
         const cv::Size& hog_detector_stride,
         double detection_scale_factor,
+        double detection_minimum_weight,
         bool find_target_orientation_enable,
-        double find_target_orientation_step)
+        double find_target_orientation_step,
+        double find_target_orientation_range)
         : evaluation_filename(evaluation_filename)
         , show_classifier_weights(show_classifier_weights)
         , enable_location_best_weight_filter(enable_location_best_weight_filter)
         , hog_detector_scale(hog_detector_scale)
         , hog_detector_stride(hog_detector_stride)
         , detection_scale_factor(detection_scale_factor)
+        , detection_minimum_weight(detection_minimum_weight)
         , find_target_orientation_enable(find_target_orientation_enable)
         , find_target_orientation_step(find_target_orientation_step)
+        , find_target_orientation_range(find_target_orientation_range)
     {
     }
 
@@ -234,8 +239,11 @@ struct DetectionSettings {
         ss << "enable_location_best_weight_filter: " << enable_location_best_weight_filter << "\n";
         ss << "hog_detector_scale: " << hog_detector_scale << "\n";
         ss << "hog_detector_stride: " << hog_detector_stride << "\n";
+        ss << "detection_scale_factor: " << detection_scale_factor << "\n";
+        ss << "detection_minimum_weight: " << detection_minimum_weight << "\n";
         ss << "find_target_orientation_enable: " << find_target_orientation_enable << "\n";
         ss << "find_target_orientation_step: " << find_target_orientation_step << "\n";
+        ss << "find_target_orientation_range: " << find_target_orientation_range << "\n";
         return ss.str();
     }
 
@@ -248,8 +256,10 @@ struct DetectionSettings {
     cv::Size hog_detector_stride;
 
     double detection_scale_factor;
+    double detection_minimum_weight;
     bool find_target_orientation_enable;
     double find_target_orientation_step;
+    double find_target_orientation_range;
 };
 
 
