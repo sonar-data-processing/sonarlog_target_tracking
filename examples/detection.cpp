@@ -19,6 +19,7 @@ struct Context {
     std::vector<std::vector<cv::Point> > annotations;
     base::Time start_time;
     size_t sample_count;
+    size_t annotated_sample_count;
     size_t detected_sample_count;
     size_t failed_sample_count;
     DetectionEvalList detection_eval_list;
@@ -36,10 +37,6 @@ struct Context {
 void sample_receiver_callback(const base::samples::Sonar& sample, int sample_index, void *user_data) {
     Context *pContext = reinterpret_cast<Context*>(user_data);
 
-    if (pContext->annotations.empty() || pContext->annotations[sample_index].empty()) {
-        return;
-    }
-
     cv::Size sonar_image_size = pContext->dataset_info.preprocessing_settings().image_max_size;
 
     pContext->sonar_holder.Reset(
@@ -49,23 +46,30 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
         sample.bin_count,
         sample.beam_count,
         sonar_image_size
-     );
+    );
+
+    bool has_annotation = !(pContext->annotations.empty() || pContext->annotations[sample_index].empty());
+
+    std::vector<cv::Point> annotations;
+
+    if (has_annotation) {
+        annotations = pContext->annotations[sample_index];
+
+        if (sonar_image_size != cv::Size(-1, -1)) {
+            image_util::resize_points(
+                annotations,
+                annotations,
+                pContext->sonar_holder.cart_width_factor(),
+                pContext->sonar_holder.cart_height_factor());
+        }
+    }
 
     std::vector<cv::RotatedRect> locations;
     std::vector<double> weights;
-
-    std::vector<cv::Point> annotations = pContext->annotations[sample_index];
-
-    if (sonar_image_size != cv::Size(-1, -1)) {
-        image_util::resize_points(
-            annotations,
-            annotations,
-            pContext->sonar_holder.cart_width_factor(),
-            pContext->sonar_holder.cart_height_factor());
-    }
-
     bool result;
-    if (pContext->dataset_info.detection_settings().find_target_orientation_enable) {
+
+    if (!has_annotation ||
+        pContext->dataset_info.detection_settings().find_target_orientation_enable) {
         result = pContext->hog_detector.Detect(
             pContext->sonar_holder.cart_image(),
             pContext->sonar_holder.cart_image_mask(),
@@ -83,12 +87,6 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
 
     cv::Mat output_image;
     pContext->sonar_holder.cart_image().copyTo(output_image);
-
-    cv::Mat annotation_image;
-    pContext->sonar_holder.cart_image().copyTo(annotation_image);
-
-    image_util::draw_contour(annotation_image, annotation_image, cv::Scalar(0, 0, 255), annotations);
-    cv::imshow("annotation_image", annotation_image);
 
     double target_orientation = DBL_EPSILON;
 
@@ -124,39 +122,49 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
        pContext->failed_sample_count++;
     }
 
-    DetectionEval detection_eval(locations, annotations, output_image.size());
-
-    cv::imshow("overlap_region_image", detection_eval.overlap_region_image());
-
     pContext->sample_count++;
 
     base::Time elapsed_time = base::Time::now()-pContext->start_time;
     double fps = pContext->sample_count/elapsed_time.toSeconds();
 
-    pContext->precision_sum += detection_eval.precision();
-    pContext->accuracy_sum += detection_eval.accuracy();
-    pContext->recall_sum += detection_eval.recall();
-    pContext->fall_out_sum += detection_eval.fall_out();
-    pContext->overlap_region_sum += detection_eval.overlap_region();
-    pContext->f1_score_sum += detection_eval.f1_score();
-
-    double accuracy_average = pContext->accuracy_sum / pContext->sample_count;
-    double precision_average = pContext->precision_sum / pContext->sample_count;
-    double recall_average = pContext->recall_sum / pContext->sample_count;
-    double fall_out_average = pContext->fall_out_sum / pContext->sample_count;
-    double overlap_region_average = pContext->overlap_region_sum / pContext->sample_count;
-    double f1_score_average = pContext->f1_score_sum /pContext->sample_count;
-
     printf("Sample index: %d, Sample count: %d\n", sample_index, pContext->sample_count);
     printf("  Detected: %d, Failed: %d, Frame per seconds: %lf, Target Orientation %lf\n",
         pContext->detected_sample_count, pContext->failed_sample_count, fps, target_orientation);
-    printf("  Accuracy: %lf, Precision %lf, Recall: %lf, Fall-out: %lf, Overlap Region: %lf, F1 Score: %lf\n",
+
+    if (has_annotation) {
+        DetectionEval detection_eval(locations, annotations, output_image.size());
+        pContext->annotated_sample_count++;
+        pContext->precision_sum += detection_eval.precision();
+        pContext->accuracy_sum += detection_eval.accuracy();
+        pContext->recall_sum += detection_eval.recall();
+        pContext->fall_out_sum += detection_eval.fall_out();
+        pContext->overlap_region_sum += detection_eval.overlap_region();
+        pContext->f1_score_sum += detection_eval.f1_score();
+
+        double accuracy_average = pContext->accuracy_sum / pContext->annotated_sample_count;
+        double precision_average = pContext->precision_sum / pContext->annotated_sample_count;
+        double recall_average = pContext->recall_sum / pContext->annotated_sample_count;
+        double fall_out_average = pContext->fall_out_sum / pContext->annotated_sample_count;
+        double overlap_region_average = pContext->overlap_region_sum / pContext->annotated_sample_count;
+        double f1_score_average = pContext->f1_score_sum / pContext->annotated_sample_count;
+
+        printf("  Accuracy: %lf, Precision %lf, Recall: %lf, Fall-out: %lf, Overlap Region: %lf, F1 Score: %lf\n",
         accuracy_average, precision_average, recall_average, fall_out_average, overlap_region_average, f1_score_average);
 
-    pContext->detection_eval_list.add_detection_evaluation(detection_eval);
+        pContext->detection_eval_list.add_detection_evaluation(detection_eval);
+
+        cv::Mat annotation_image;
+        pContext->sonar_holder.cart_image().copyTo(annotation_image);
+
+        image_util::draw_contour(annotation_image, annotation_image, cv::Scalar(0, 0, 255), annotations);
+        cv::imshow("annotation_image", annotation_image);
+        cv::imshow("overlap_region_image", detection_eval.overlap_region_image());
+    }
+    else {
+        printf("  There is no evaluation data for this sample\n");
+    }
 
     fflush(stdout);
-
     cv::imshow("output", output_image);
 
     if (pContext->sample_count == 1) {
@@ -196,6 +204,7 @@ int main(int argc, char **argv) {
     context.hog_detector.LoadSVMTrain(context.dataset_info.training_settings().full_model_filename());
 
     context.sample_count = 0;
+    context.annotated_sample_count = 0;
     context.detected_sample_count = 0;
     context.failed_sample_count = 0;
     context.precision_sum = 0;
