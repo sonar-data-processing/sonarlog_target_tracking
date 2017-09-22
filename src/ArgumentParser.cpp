@@ -9,7 +9,10 @@ using namespace boost;
 namespace sonarlog_target_tracking {
 
 ArgumentParser::ArgumentParser()
-    : dataset_info_filename_("") {
+    : dataset_info_filename_("")
+    , evaluation_settings_filename_("")
+    , show_detection_result_(false)
+{
 }
 
 ArgumentParser::~ArgumentParser() {
@@ -22,6 +25,8 @@ bool ArgumentParser::run(int argc, char **argv) {
 
     desc.add_options()
         ("dataset-info-filename,i", program_options::value<std::string>()->required(), "The YML file with the dataset information.")
+        ("evaluation-settings-filename,e", program_options::value<std::string>(), "The YML with evaluation filename.")
+        ("show-detection-result,s", program_options::value<bool>(), "Show detection result.")
         ("help,h", "show the command line description");
 
     program_options::positional_options_description pd;
@@ -46,6 +51,21 @@ bool ArgumentParser::run(int argc, char **argv) {
                 return false;
             }
         }
+
+        if (vm.count("evaluation-settings-filename")) {
+            evaluation_settings_filename_ = vm["evaluation-settings-filename"].as<std::string>();
+
+            if (!file_exists(evaluation_settings_filename_)) {
+                std::cerr << "ERROR: The evaluation settings file not found" << std::endl;
+                return false;
+            }
+        }
+
+        if (vm.count("show-detection-result")) {
+            show_detection_result_ = vm["show-detection-result"].as<bool>();
+            std::cout << "show_detection_result: " << show_detection_result_ << std::endl;
+        }
+
 
         program_options::notify(vm);
     } catch (boost::program_options::error& e) {

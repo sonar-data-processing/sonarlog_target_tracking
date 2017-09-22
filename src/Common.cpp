@@ -55,6 +55,38 @@ void load_samples(rock_util::LogStream& stream, std::vector<base::samples::Sonar
     printf("\n");
 }
 
+void load_samples_from_dataset_entry(
+    const DatasetInfoEntry& dataset_entry,
+    std::vector<base::samples::Sonar>& result_samples,
+    std::vector<std::vector<cv::Point> >& result_annotations)
+{
+    rock_util::LogReader reader(dataset_entry.log_filename);
+    rock_util::LogStream stream = reader.stream(dataset_entry.stream_name);
+
+    std::vector<std::vector<cv::Point> > annotations;
+    load_log_annotation(dataset_entry.annotation_filename, dataset_entry.annotation_name, annotations);
+
+    int first_sample = dataset_entry.from_index;
+    int last_sample = dataset_entry.to_index;
+    clip_interval(first_sample, last_sample, stream.total_samples());
+
+    stream.set_current_sample_index(first_sample);
+    int sample_count = 0;
+    base::samples::Sonar sample;
+
+    printf("Loading log samples\n\033[s");
+    do {
+        printf("\033[uLoading sample: %ld", stream.current_sample_index()+1);
+        fflush(stdout);
+
+        std::vector<cv::Point> annotation_points = annotations[stream.current_sample_index()];
+        result_annotations.push_back(annotation_points);
+        stream.next<base::samples::Sonar>(sample);
+        result_samples.push_back(sample);
+        sample_count++;
+    } while(stream.current_sample_index() <= last_sample);
+    printf("\nTotal samples: %d\n", sample_count);
+}
 void adjust_annotation(cv::Size size, const std::vector<cv::Point>& src_points, std::vector<cv::Point>& dst_points, cv::Mat& annotation_mask) {
     std::vector<std::vector<cv::Point> > contours;
     contours.push_back(src_points);
@@ -146,7 +178,7 @@ void load_training_data_from_dataset_entry(
     load_log_annotation(dataset_entry.annotation_filename, dataset_entry.annotation_name, annotations);
 
     std::vector<SampleInterval>::const_iterator it = dataset_entry.training_intervals.begin();
-    printf("Loading log samples\n\033[s");
+    printf("Loading training log samples\n\033[s");
 
     int samples_count = 0;
     for (it; it != dataset_entry.training_intervals.end(); it++) {
