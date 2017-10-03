@@ -212,10 +212,15 @@ int main(int argc, char **argv) {
     context.start_time = base::Time::now();
 
     for (size_t i=0; i<entries.size(); i++) {
-        common::load_log_annotation(
-            entries[i].annotation_filename,
-            entries[i].annotation_name,
-            context.annotations);
+        std::cout << "Annotation Filename: " << entries[i].annotation_filename << std::endl;
+
+        if (!entries[i].annotation_filename.empty() && common::file_exists(entries[i].annotation_filename)) {
+            common::load_log_annotation(
+                entries[i].annotation_filename,
+                entries[i].annotation_name,
+                context.annotations);
+        }
+
 
         printf("Processing log: %s\n", entries[i].log_filename.c_str());
         common::exec_samples_from_dataset_entry(entries[i], sample_receiver_callback, &context);
