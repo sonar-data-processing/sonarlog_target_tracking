@@ -20,30 +20,38 @@ void DatasetInfo::Load(const std::string& filename)
 {
     YAML::Node node = YAML::LoadFile(filename);
     assert(node.Type() == YAML::NodeType::Map);
-    assert(node["log-entries"]);
-    assert(node["log-entries"].Type() == YAML::NodeType::Sequence);
+    assert(node["log-entries-positive"]);
+    assert(node["log-entries-positive"].Type() == YAML::NodeType::Sequence);
 
-    // load log entries
-    LoadLogEntries(node["log-entries"]);
+    // load positive log entries
+    LoadLogEntries(node["log-entries-positive"], positive_entries_);
+
+    // load negative log entries
+    LoadLogEntries(node["log-entries-negative"], negative_entries_);
+
+    // load extraction settings
+    LoadExtractionSettings(node["extraction-settings"]);
+
+    // load preprocessing settings
+    LoadPreprocessingSettings(node["preprocessing-settings"]);
 
     if (!node["training-settings"]) return;
 
     assert(node["training-settings"].Type() == YAML::NodeType::Map);
 
-    // load preprocessing settings
-    LoadPreprocessingSettings(node["preprocessing-settings"]);
-
     // load training settings
     LoadTrainingSettings(node["training-settings"]);
 
+    // load detection settings
     LoadDetectionSettings(node["detection-settings"]);
+
 }
 
-void DatasetInfo::LoadLogEntries(const YAML::Node& node) {
+void DatasetInfo::LoadLogEntries(const YAML::Node& node, std::vector<DatasetInfoEntry>& entries) {
     for (size_t i=0; i<node.size(); i++) {
         DatasetInfoEntry entry;
         NodeToEntry(node[i], entry);
-        entries_.push_back(entry);
+        entries.push_back(entry);
     }
 }
 
@@ -98,6 +106,18 @@ void DatasetInfo::LoadPreprocessingSettings(const YAML::Node& node) {
         preprocessing_settings_.image_max_size.width = node["image-max-size"]["width"].as<int>();
         preprocessing_settings_.image_max_size.height = node["image-max-size"]["height"].as<int>();
     }
+
+    if (node["show-preprocessing-result"]) {
+        preprocessing_settings_.show_preprocessing_result = node["show-preprocessing-result"].as<bool>();
+    }
+
+    if (node["enable-enhancement"]) {
+        preprocessing_settings_.enable_enhancement = node["enable-enhancement"].as<bool>();
+    }
+
+    if (node["background-reducing-thresh"]) {
+        preprocessing_settings_.background_reducing_thresh = node["background-reducing-thresh"].as<double>();
+    }
 }
 
 void DatasetInfo::LoadTrainingSettings(const YAML::Node& node) {
@@ -143,6 +163,10 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
         detection_settings_.enable_location_best_weight_filter = node["enable-location-best-weight-filter"].as<bool>();
     }
 
+    if (node["include-no-annotated-samples"]) {
+        detection_settings_.include_no_annotated_samples = node["include-no-annotated-samples"].as<bool>();
+    }
+
     if (node["detection-scale-factor"]) {
         detection_settings_.detection_scale_factor = node["detection-scale-factor"].as<double>();
     }
@@ -163,9 +187,23 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
         detection_settings_.find_target_orientation_range = node["find-target-orientation-range"].as<double>();
     }
 
+    if (node["overlap-threshold"]) {
+        detection_settings_.overlap_threshold = node["overlap-threshold"].as<double>();
+    }
+
     if (node["hog-detector-settings"] && node["hog-detector-settings"].Type() == YAML::NodeType::Map) {
-        if (node["hog-detector-settings"]["scale"]) {
-            detection_settings_.hog_detector_scale = node["hog-detector-settings"]["scale"].as<double>();
+        if (node["hog-detector-settings"]["positive-scale"]) {
+            detection_settings_.hog_detector_positive_scale = node["hog-detector-settings"]["positive-scale"].as<double>();
+        }
+        else if (node["hog-detector-settings"]["scale"]) {
+            detection_settings_.hog_detector_positive_scale = node["hog-detector-settings"]["scale"].as<double>();
+        }
+
+        if (node["hog-detector-settings"]["negative-scale"]) {
+            detection_settings_.hog_detector_negative_scale = node["hog-detector-settings"]["negative-scale"].as<double>();
+        }
+        else {
+            detection_settings_.hog_detector_negative_scale = detection_settings_.hog_detector_positive_scale;
         }
 
         if (node["hog-detector-settings"]["stride"]) {
@@ -175,9 +213,72 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
     }
 }
 
+void DatasetInfo::LoadExtractionSettings(const YAML::Node& node) {
+    if (!node) return;
+    assert(node.Type() == YAML::NodeType::Map);
+
+    if (node["class-id"]) {
+        std::cout << "set class-id" << std::endl;
+        extraction_settings_.class_id = node["class-id"].as<int>();
+    }
+
+    if (node["extract-directory"]) {
+        extraction_settings_.extract_directory = node["extract-directory"].as<std::string>();
+    }
+
+    if (node["extract-yolo-inputs"]) {
+        extraction_settings_.extract_yolo_inputs = node["extract-yolo-inputs"].as<bool>();
+    }
+
+    if (node["extract-rotation-norm"]) {
+        extraction_settings_.extract_rotation_norm = node["extract-rotation-norm"].as<bool>();
+    }
+
+    if (node["extract-annotation-orientation"]) {
+        extraction_settings_.extract_annotation_orientation = node["extract-annotation-orientation"].as<bool>();
+    }
+
+    if (node["save-source-image"]) {
+        extraction_settings_.save_source_image = node["save-source-image"].as<bool>();
+    }
+
+    if (node["save-enhanced-image"]) {
+        extraction_settings_.save_enhanced_image = node["save-enhanced-image"].as<bool>();
+    }
+
+    if (node["save-denoised-image"]) {
+        extraction_settings_.save_denoised_image = node["save-denoised-image"].as<bool>();
+    }
+
+    if (node["save-preprocessed-image"]) {
+        extraction_settings_.save_preprocessed_image = node["save-preprocessed-image"].as<bool>();
+    }
+
+    if (node["show-source-image"]) {
+        extraction_settings_.show_source_image = node["show-source-image"].as<bool>();
+    }
+
+    if (node["show-enhanced-image"]) {
+        extraction_settings_.show_enhanced_image = node["show-enhanced-image"].as<bool>();
+    }
+
+    if (node["show-denoised-image"]) {
+        extraction_settings_.show_denoised_image = node["show-denoised-image"].as<bool>();
+    }
+
+    if (node["show-preprocessed-image"]) {
+        extraction_settings_.show_preprocessed_image = node["show-preprocessed-image"].as<bool>();
+    }
+
+    if (node["show-annotation-image"]) {
+        extraction_settings_.show_annotation_image = node["show-annotation-image"].as<bool>();
+    }
+}
+
 void DatasetInfo::NodeToEntry(const YAML::Node& node, DatasetInfoEntry& entry) {
     assert(node["log-filename"]);
     assert(node["stream-name"]);
+    entry.name = (node["name"]) ? node["name"].as<std::string>() : "";
     entry.log_filename = node["log-filename"].as<std::string>();
     entry.stream_name = node["stream-name"].as<std::string>();
     entry.from_index = (node["from-index"]) ?  node["from-index"].as<int>() : -1;

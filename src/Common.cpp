@@ -17,10 +17,17 @@ void clip_interval(int& from, int& to, int length) {
 }
 
 void load_log_annotation(const std::string& logannotation_file, const std::string& annotation_name, std::vector<std::vector<cv::Point> >& annotation_points) {
+
+    if (!file_exists(logannotation_file)) {
+        std::cout << "The log annotation file: " << logannotation_file << " does not exist." << std::endl;
+        return;
+    }
+
     AnnotationFileReader annotation_file_reader(logannotation_file);
     std::vector<AnnotationFileReader::AnnotationMap> annotations = annotation_file_reader.read();
 
     if (annotations.empty()) {
+        annotation_points.clear();
         return;
     }
 
@@ -97,7 +104,8 @@ void adjust_annotation(cv::Size size, const std::vector<cv::Point>& src_points, 
 }
 
 bool file_exists(std::string filename) {
-    if (!boost::filesystem::exists(filename) &&
+    if (filename.empty() ||
+        !boost::filesystem::exists(filename) &&
         !boost::filesystem::exists(boost::filesystem::path(boost::filesystem::current_path()).string() + "/" + filename)){
         return false;
     }
@@ -159,15 +167,16 @@ void load_training_data_from_dataset_entry(
     std::vector<std::vector<cv::Point> >& training_annotations)
 {
     if (dataset_entry.training_intervals.empty()) {
+        printf("There is no training interval for this log entry.\n");
         return;
     }
 
     if (dataset_entry.annotation_filename.empty()) {
-        throw std::runtime_error("There is no annotation filename for "+dataset_entry.log_filename+" entry.");
+        std::cout << "There is no annotation filename for " << dataset_entry.log_filename << " entry." << std::endl;;
     }
 
     if (dataset_entry.annotation_name.empty()) {
-        throw std::runtime_error("There is no annotation name for "+dataset_entry.log_filename+" entry.");
+        std::cout << "There is no annotation name for " << dataset_entry.log_filename << " entry." << std::endl;
     }
 
 
@@ -191,7 +200,11 @@ void load_training_data_from_dataset_entry(
             printf("\033[uLoading sample: %ld", stream.current_sample_index()+1);
             fflush(stdout);
 
-            std::vector<cv::Point> annotation_points = annotations[stream.current_sample_index()];
+            std::vector<cv::Point> annotation_points;
+            if (!annotations.empty()) {
+                annotation_points = annotations[stream.current_sample_index()];
+            }
+
             training_annotations.push_back(annotation_points);
 
             base::samples::Sonar sample;

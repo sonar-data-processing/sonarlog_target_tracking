@@ -71,6 +71,13 @@ void EvaluationSettings::NodeToTrainingEvaluationSettings(const YAML::Node& node
       settings.mean_diff_filter_enable = node["mean-diff-filter-enable"].as<bool>();
     }
 
+    if (node["mean-filter-ksize-list"]  && node["mean-filter-ksize-list"].Type() == YAML::NodeType::Sequence) {
+        settings.mean_filter_ksize_list.clear();
+        for (size_t i = 0; i < node["mean-filter-ksize-list"].size(); i++) {
+            settings.mean_filter_ksize_list.push_back(node["mean-filter-ksize-list"][i].as<int>());
+        }
+    }
+
     if (node["positive-input-validate"]) {
       settings.positive_input_validate = node["positive-input-validate"].as<bool>();
     }
@@ -134,15 +141,15 @@ void EvaluationSettings::NodeToDetectionEvaluationSettings(const YAML::Node& nod
         node["hog-detector-settings"].Type() == YAML::NodeType::Map) {
 
         if (node["hog-detector-settings"]["scale-begin"]) {
-            settings.hog_detector_scale_begin = node["hog-detector-settings"]["scale-begin"].as<double>();
+            settings.hog_detector_positive_scale_begin = node["hog-detector-settings"]["scale-begin"].as<double>();
         }
 
         if (node["hog-detector-settings"]["scale-end"]) {
-            settings.hog_detector_scale_end = node["hog-detector-settings"]["scale-end"].as<double>();
+            settings.hog_detector_positive_scale_end = node["hog-detector-settings"]["scale-end"].as<double>();
         }
 
         if (node["hog-detector-settings"]["scale-step"]) {
-            settings.hog_detector_scale_step = node["hog-detector-settings"]["scale-step"].as<double>();
+            settings.hog_detector_positive_scale_step = node["hog-detector-settings"]["scale-step"].as<double>();
         }
 
         if (node["hog-detector-settings"]["strides"] &&

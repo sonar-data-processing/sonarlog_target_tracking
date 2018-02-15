@@ -12,6 +12,7 @@ namespace sonarlog_target_tracking
 class DetectionEval
 {
 public:
+
     DetectionEval(
         const std::vector<cv::RotatedRect>& locations,
         const std::vector<cv::Point>& annotations,

@@ -21,6 +21,8 @@ struct TrainingEvaluationSettings {
     {
         windows.push_back(cv::Size(32, 24));
         windows.push_back(cv::Size(56, 40));
+        mean_filter_ksize_list.push_back(3);
+        mean_filter_ksize_list.push_back(5);
     }
 
     std::string to_string() const
@@ -49,6 +51,7 @@ struct TrainingEvaluationSettings {
     double training_scale_factor_end;
     double training_scale_factor_step;
     std::vector<cv::Size> windows;
+    std::vector<int> mean_filter_ksize_list;
 };
 
 struct DetectionEvaluationSettings {
@@ -59,9 +62,9 @@ struct DetectionEvaluationSettings {
         , detection_scale_factor_end(0.8)
         , detection_scale_factor_step(0.1)
         , find_target_orientation_enable(false)
-        , hog_detector_scale_begin(1.025)
-        , hog_detector_scale_end(1.5)
-        , hog_detector_scale_step(0.025)
+        , hog_detector_positive_scale_begin(1.025)
+        , hog_detector_positive_scale_end(1.5)
+        , hog_detector_positive_scale_step(0.025)
     {
         find_target_orientation_steps.push_back(15);
         find_target_orientation_steps.push_back(30);
@@ -85,9 +88,9 @@ struct DetectionEvaluationSettings {
             if (i < find_target_orientation_steps.size()-1) ss << ", ";
         }
         ss << "\n";
-        ss << "hog_detector_scale_begin: " << hog_detector_scale_begin << "\n";
-        ss << "hog_detector_scale_end: " << hog_detector_scale_end << "\n";
-        ss << "hog_detector_scale_step: " << hog_detector_scale_step << "\n";
+        ss << "hog_detector_positive_scale_begin: " << hog_detector_positive_scale_begin << "\n";
+        ss << "hog_detector_positive_scale_end: " << hog_detector_positive_scale_end << "\n";
+        ss << "hog_detector_positive_scale_step: " << hog_detector_positive_scale_step << "\n";
         ss << "hog_detector_strides: ";
         for (size_t i = 0; i < hog_detector_strides.size(); i++) {
             ss <<  hog_detector_strides[i];
@@ -103,9 +106,9 @@ struct DetectionEvaluationSettings {
     double detection_scale_factor_step;
     bool find_target_orientation_enable;
     std::vector<int> find_target_orientation_steps;
-    double hog_detector_scale_begin;
-    double hog_detector_scale_end;
-    double hog_detector_scale_step;
+    double hog_detector_positive_scale_begin;
+    double hog_detector_positive_scale_end;
+    double hog_detector_positive_scale_step;
     std::vector<int> hog_detector_strides;
 };
 

@@ -16,6 +16,7 @@ std::string get_training_settings_string(
     const TrainingSettings& training_settings)
 {
     std::stringstream ss;
+    ss << "mfk-" << preprocessing_settings.mean_filter_ksize << "-";
     ss << "bfe-" << preprocessing_settings.border_filter_enable << "-";
     ss << "bft-" << preprocessing_settings.border_filter_type << "-";
     ss << "mdfe-" << preprocessing_settings.mean_diff_filter_enable << "-";
@@ -39,7 +40,7 @@ std::string get_detection_settings_string(
     else {
         ss << "ftos-##-";
     }
-    ss << "hdsc-" << detection_settings.hog_detector_scale << "-";
+    ss << "hdsc-" << detection_settings.hog_detector_positive_scale << "-";
     ss << "hdst-" <<  detection_settings.hog_detector_stride.width << "x" << detection_settings.hog_detector_stride.height;
     return ss.str();
 }
@@ -72,7 +73,7 @@ void perform_hog_detector_test(
     hog_detector.set_show_descriptor(training_settings.hog_show_descriptor);
     hog_detector.set_detection_scale_factor(detection_settings.detection_scale_factor);
     hog_detector.set_window_stride(detection_settings.hog_detector_stride);
-    hog_detector.set_image_scale(detection_settings.hog_detector_scale);
+    hog_detector.set_image_scale(detection_settings.hog_detector_positive_scale);
     hog_detector.set_orientation_step(detection_settings.find_target_orientation_step);
 
     sonar_processing::SonarImagePreprocessing preprocessing;
@@ -149,15 +150,19 @@ void perform_hog_detector_test(
                 locations.push_back(loc);
 
             }
-            evaluation_holder.detected_sample_count++;
-        }
-        else {
-            evaluation_holder.failed_sample_count++;
+
         }
 
         DetectionEval detection_eval(locations, annotations, sonar_holder.cart_image().size());
 
         sample_count++;
+
+        if (detection_eval.overlap_region() >= 0.3) {
+            evaluation_holder.detected_sample_count++;
+        }
+        else {
+            evaluation_holder.failed_sample_count++;
+        }
 
         base::Time elapsed_time = base::Time::now()-start_time;
         double fps = sample_count/elapsed_time.toSeconds();
@@ -176,7 +181,6 @@ void perform_hog_detector_test(
         evaluation_holder.overlap_region_average = overlap_region_sum / sample_count;
         evaluation_holder.f1_score_average = f1_score_sum / sample_count;
 
-
         printf("Current Settings:\n");
         printf("  border-filter-enable [BFE]: %d\n", preprocessing_settings.border_filter_enable);
         printf("  border-filter-type [BFT]: %s\n", preprocessing_settings.border_filter_type.c_str());
@@ -193,7 +197,7 @@ void perform_hog_detector_test(
             printf("  find-target-orientation-step [FTOS]: %lf\n", detection_settings.find_target_orientation_step);
         else
             printf("  find-target-orientation-step [FTOS]: -\n");
-        printf("  hog-detector-scale [HDSc]: %lf\n", detection_settings.hog_detector_scale);
+        printf("  hog-detector-scale [HDSc]: %lf\n", detection_settings.hog_detector_positive_scale);
         printf("  hog-detector-stride [HDSt]: %dx%d\n",
             detection_settings.hog_detector_stride.width,
             detection_settings.hog_detector_stride.height);
@@ -297,8 +301,11 @@ void perform_hog_detector_training(
     hog_detector.set_sonar_image_size(preprocessing_settings.image_max_size);
     hog_detector.set_show_positive_window(false);
 
+    std::vector<int> input_labels;
+    for (size_t j=0; j<train_samples.size(); j++) input_labels.push_back(1);
+
     std::cout << "HOG Detector training..." << std::endl;
-    hog_detector.Train(train_samples, train_annotations, model_filename);
+    hog_detector.Train(train_samples, train_annotations, input_labels, model_filename);
     std::cout << "HOG Detector training finished" << std::endl;
 }
 
@@ -321,7 +328,6 @@ void hog_detector_evaluation(
 
     TrainingSettings training_settings = dataset_info.training_settings();
     training_settings.positive_input_validate = tes.positive_input_validate;
-    training_settings.hog_training_scale_factor = tes.training_scale_factor_begin;
 
     std::string folder = training_settings.output_directory_path()+"/"+EVAL_FOLDER_NAME;
     std::string result_filename = folder+"/evaluation_results.csv";
@@ -347,53 +353,73 @@ void hog_detector_evaluation(
         it++;
     }
 
-    while (training_settings.hog_training_scale_factor < (tes.training_scale_factor_end+tes.training_scale_factor_step)) {
-        for (size_t i = 0; i < tes.windows.size(); i++) {
 
-            training_settings.hog_window_size = tes.windows[i];
+    for (size_t mean_filter_ksize_index = 0; mean_filter_ksize_index < tes.mean_filter_ksize_list.size(); mean_filter_ksize_index++) {
+        preprocessing_settings.mean_filter_ksize = tes.mean_filter_ksize_list[mean_filter_ksize_index];
 
-            std::string filename = get_training_settings_string(preprocessing_settings, training_settings)+".yml";
-            std::string model_filename = folder+"/"+filename;
+        training_settings.hog_training_scale_factor = tes.training_scale_factor_begin;
+        while (training_settings.hog_training_scale_factor < (tes.training_scale_factor_end+tes.training_scale_factor_step)) {
+            for (size_t i = 0; i < tes.windows.size(); i++) {
 
-            std::cout << "HOG Detector model filename" << model_filename << std::endl;
-            if (!sonarlog_target_tracking::common::file_exists(model_filename)) {
-                std::cout << "Perform Training" << std::endl;
-                perform_hog_detector_training(
-                    preprocessing_settings,
-                    training_settings,
-                    train_samples,
-                    train_annotations,
-                    model_filename);
-            }
+                training_settings.hog_window_size = tes.windows[i];
 
-            for (size_t i = 0; i < des.size(); i++) {
+                std::string filename = get_training_settings_string(preprocessing_settings, training_settings)+".yml";
+                std::string model_filename = folder+"/"+filename;
 
-                std::cout <<"============================================================\n";
-                std::cout <<"Detection Settings: " << i << "\n";
-                std::cout <<"============================================================\n";
-                std::cout << des[i].to_string();
-                std::cout << "SVM Model Training: " << model_filename << std::endl;
+                std::cout << "HOG Detector model filename" << model_filename << std::endl;
+                if (!sonarlog_target_tracking::common::file_exists(model_filename)) {
+                    std::cout << "Preprocessing settings: " << std::endl;
+                    std::cout << preprocessing_settings.to_string() << std::endl;
+                    std::cout << "Perform Training" << std::endl;
+                    perform_hog_detector_training(
+                        preprocessing_settings,
+                        training_settings,
+                        train_samples,
+                        train_annotations,
+                        model_filename);
+                }
 
-                DetectionSettings detection_settings = dataset_info.detection_settings();
-                detection_settings.enable_location_best_weight_filter = des[i].enable_location_best_weight_filter;
-                detection_settings.find_target_orientation_enable = des[i].find_target_orientation_enable;
-                detection_settings.detection_scale_factor = des[i].detection_scale_factor_begin;
-                while (detection_settings.detection_scale_factor < (des[i].detection_scale_factor_end+des[i].detection_scale_factor_step)) {
+                for (size_t i = 0; i < des.size(); i++) {
 
-                    detection_settings.hog_detector_scale = des[i].hog_detector_scale_begin;
-                    while (detection_settings.hog_detector_scale < (des[i].hog_detector_scale_end+des[i].hog_detector_scale_step)) {
+                    std::cout <<"============================================================\n";
+                    std::cout <<"Detection Settings: " << i << "\n";
+                    std::cout <<"============================================================\n";
+                    std::cout << des[i].to_string();
+                    std::cout << "SVM Model Training: " << model_filename << std::endl;
 
-                        std::vector<int>::const_iterator win_stride_it = des[i].hog_detector_strides.begin();
+                    DetectionSettings detection_settings = dataset_info.detection_settings();
+                    detection_settings.enable_location_best_weight_filter = des[i].enable_location_best_weight_filter;
+                    detection_settings.find_target_orientation_enable = des[i].find_target_orientation_enable;
+                    detection_settings.detection_scale_factor = des[i].detection_scale_factor_begin;
+                    while (detection_settings.detection_scale_factor < (des[i].detection_scale_factor_end+des[i].detection_scale_factor_step)) {
 
-                        while (win_stride_it != des[i].hog_detector_strides.end()) {
-                            int stride = *(win_stride_it++);
-                            detection_settings.hog_detector_stride = cv::Size(stride, stride);
+                        detection_settings.hog_detector_positive_scale = des[i].hog_detector_positive_scale_begin;
+                        while (detection_settings.hog_detector_positive_scale < (des[i].hog_detector_positive_scale_end+des[i].hog_detector_positive_scale_step)) {
 
-                            if (detection_settings.find_target_orientation_enable) {
-                                std::vector<int>::const_iterator orientation_step_it = des[i].find_target_orientation_steps.begin();
+                            std::vector<int>::const_iterator win_stride_it = des[i].hog_detector_strides.begin();
 
-                                while (orientation_step_it != des[i].find_target_orientation_steps.end()) {
-                                    detection_settings.find_target_orientation_step = *(orientation_step_it++);
+                            while (win_stride_it != des[i].hog_detector_strides.end()) {
+                                int stride = *(win_stride_it++);
+                                detection_settings.hog_detector_stride = cv::Size(stride, stride);
+
+                                if (detection_settings.find_target_orientation_enable) {
+                                    std::vector<int>::const_iterator orientation_step_it = des[i].find_target_orientation_steps.begin();
+
+                                    while (orientation_step_it != des[i].find_target_orientation_steps.end()) {
+                                        detection_settings.find_target_orientation_step = *(orientation_step_it++);
+                                        hog_detector_test(
+                                            preprocessing_settings,
+                                            training_settings,
+                                            detection_settings,
+                                            test_samples,
+                                            test_annotations,
+                                            model_filename,
+                                            result_filename,
+                                            evaluation_holder_map,
+                                            show_detection_result);
+                                    }
+                                }
+                                else {
                                     hog_detector_test(
                                         preprocessing_settings,
                                         training_settings,
@@ -406,29 +432,18 @@ void hog_detector_evaluation(
                                         show_detection_result);
                                 }
                             }
-                            else {
-                                hog_detector_test(
-                                    preprocessing_settings,
-                                    training_settings,
-                                    detection_settings,
-                                    test_samples,
-                                    test_annotations,
-                                    model_filename,
-                                    result_filename,
-                                    evaluation_holder_map,
-                                    show_detection_result);
-                            }
+
+                            detection_settings.hog_detector_positive_scale += des[i].hog_detector_positive_scale_step;
                         }
-
-                        detection_settings.hog_detector_scale += des[i].hog_detector_scale_step;
+                        detection_settings.detection_scale_factor += des[i].detection_scale_factor_step;
                     }
-                    detection_settings.detection_scale_factor += des[i].detection_scale_factor_step;
                 }
-            }
 
+            }
+            training_settings.hog_training_scale_factor +=tes.training_scale_factor_step;
         }
-        training_settings.hog_training_scale_factor +=tes.training_scale_factor_step;
     }
+
 }
 
 int main(int argc, char **argv) {
@@ -449,7 +464,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = dataset_info.entries();
+    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = dataset_info.positive_entries();
 
     std::vector<TrainingEvaluationSettings> tes;
     tes.insert(

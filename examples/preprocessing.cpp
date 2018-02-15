@@ -28,25 +28,23 @@ void perform_sonar_image_preprocessing(Context& context) {
     cv::Mat preprocessed_mask;
 
     if (context.dataset_info.preprocessing_settings().image_max_size != cv::Size(-1, -1)) {
+        cv::imshow("Source Image", source_image);
+
         context.sonar_image_preprocessing.Apply(
             source_image,
             source_mask,
             preprocessed_image,
             preprocessed_mask);
-
-        cv::imshow("source_image", source_image);
-        cv::imshow("preprocessed_image", preprocessed_image);
     }
     else {
+        image_util::show_image("Source Image", source_image, 2);
+
         context.sonar_image_preprocessing.Apply(
             source_image,
             source_mask,
             preprocessed_image,
             preprocessed_mask,
             context.dataset_info.preprocessing_settings().scale_factor);
-
-        image_util::show_image("source_image", source_image, 2);
-        image_util::show_image("preprocessed_image", preprocessed_image, 2);
     }
 
     cv::waitKey(25);
@@ -78,7 +76,7 @@ int main(int argc, char **argv) {
     Context context;
 
     context.dataset_info =  DatasetInfo(argument_parser.dataset_info_filename());
-    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = context.dataset_info.entries();
+    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = context.dataset_info.positive_entries();
     std::cout << context.dataset_info.preprocessing_settings().to_string() << std::endl;
 
     common::load_preprocessing_settings(

@@ -1,20 +1,18 @@
 cmake_minimum_required (VERSION 2.8)
 project (sonarlog_target_tracking)
 
-option (COMPILE_CONVERT_TO_IMAGES   OFF)
-option (COMPILE_DFT_PROC            OFF)
-option (COMPILE_VIDEO_GENERATOR     OFF)
+option (COMPILE_EXTRACTION          OFF)
+option (COMPILE_VIDEOCONV           OFF)
 option (COMPILE_PREPROCESSING       OFF)
 option (COMPILE_DETECTION           OFF)
 option (COMPILE_EVALUATION          OFF)
 
-set ( COMPILE_CONVERT_TO_IMAGES OFF )
-set ( COMPILE_DFT_PROC          OFF )
-set ( COMPILE_VIDEO_GENERATOR   OFF )
-set ( COMPILE_PREPROCESSING      ON )
-set ( COMPILE_TRAINING           ON )
-set ( COMPILE_DETECTION          ON )
-set ( COMPILE_EVALUATION         ON )
+set ( COMPILE_EXTRACTION      ON )
+set ( COMPILE_VIDEOCONV       ON )
+set ( COMPILE_PREPROCESSING   ON )
+set ( COMPILE_TRAINING        ON )
+set ( COMPILE_DETECTION       ON )
+set ( COMPILE_EVALUATION      ON )
 
 list(APPEND CMAKE_MODULE_PATH $ENV{SONAR_TOOLKIT_PREFIX}/base/cmake)
 
@@ -72,65 +70,45 @@ install (
     DESTINATION include/sonar_toolkit/${PROJECT_NAME}
 )
 
-if (COMPILE_CONVERT_TO_IMAGES)
-    message ( STATUS "Compile sonarlog-convert_to_images example")
+if (COMPILE_EXTRACTION)
+    message ( STATUS "Compile sonarlog-extraction example")
 
     add_executable (
-        sonarlog-convert_to_images
-        examples/convert_to_images.cpp
+        sonarlog-extraction
+        examples/extraction.cpp
         ${SOURCES}
     )
 
     target_link_libraries (
-        sonarlog-convert_to_images
+        sonarlog-extraction
         ${LIBS}
     )
 
     install (
-        TARGETS sonarlog-convert_to_images
+        TARGETS sonarlog-extraction
         DESTINATION bin
     )
 endif(COMPILE_CONVERT_TO_IMAGES)
 
-if (COMPILE_DFT_PROC)
-    message ( STATUS "Compile DFT processing example")
+if (COMPILE_VIDEOCONV)
+    message ( STATUS "Compile videoconv example")
 
     add_executable (
-        sonarlog-dft_proc
-        examples/dft_proc.cpp
+        sonarlog-videoconv
+        examples/videoconv.cpp
         ${SOURCES}
     )
 
     target_link_libraries (
-        sonarlog-dft_proc
+        sonarlog-videoconv
         ${LIBS}
     )
 
     install (
-        TARGETS sonarlog-dft_proc
+        TARGETS sonarlog-videoconv
         DESTINATION bin
     )
-endif(COMPILE_DFT_PROC)
-
-if (COMPILE_VIDEO_GENERATOR)
-    message ( STATUS "Compile video_generator example")
-
-    add_executable (
-        sonarlog-video_generator
-        examples/video_generator.cpp
-        ${SOURCES}
-    )
-
-    target_link_libraries (
-        sonarlog-video_generator
-        ${LIBS}
-    )
-
-    install (
-        TARGETS sonarlog-video_generator
-        DESTINATION bin
-    )
-endif(COMPILE_VIDEO_GENERATOR)
+endif(COMPILE_VIDEOCONV)
 
 if (COMPILE_DETECTION)
 

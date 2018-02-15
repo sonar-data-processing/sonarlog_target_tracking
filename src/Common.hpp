@@ -108,6 +108,9 @@ void load_preprocessing_settings(
     preprocessing.set_median_blur_filter_ksize(settings.median_blur_filter_ksize);
     preprocessing.set_border_filter_type(border_filter_type(settings.border_filter_type));
     preprocessing.set_border_filter_enable(settings.border_filter_enable);
+    preprocessing.set_show_preprocessing_result(settings.show_preprocessing_result);
+    preprocessing.set_enable_enhancement(settings.enable_enhancement);
+    preprocessing.set_background_reducing_thresh(settings.background_reducing_thresh);
 }
 
 inline
