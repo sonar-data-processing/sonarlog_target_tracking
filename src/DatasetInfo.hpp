@@ -307,10 +307,17 @@ struct ExtractionSettings {
     ExtractionSettings()
     {
         class_id = 0;
+        class_name = "";
+        extract_target_bbox = false;
+        extract_target_orientations = false;
+        extract_target_orientations_step = 30;
+        extract_target_orientations_keep = false;
         extract_directory = "";
         extract_yolo_inputs = true;
         extract_rotation_norm = false;
+        extract_annotation_mask = false;
         extract_annotation_orientation = false;
+        extract_target_orientations_keep = false;
         save_source_image = true;
         save_enhanced_image = true;
         save_denoised_image = true;
@@ -320,13 +327,20 @@ struct ExtractionSettings {
         show_denoised_image = false;
         show_preprocessed_image = false;
         show_annotation_image = false;
+        training_samples = false;
     }
 
     ExtractionSettings(
         int class_id,
+        const std::string& class_name,
         const std::string& extract_directory,
+        bool extract_target_bbox,
+        bool extract_target_orientations,
+        double extract_target_orientations_step,
+        bool extract_target_orientations_keep,
         bool extract_yolo_inputs,
         bool extract_rotation_norm,
+        bool extract_annotation_mask,
         bool extract_annotation_orientation,
         bool save_source_image,
         bool save_enhanced_image,
@@ -336,11 +350,18 @@ struct ExtractionSettings {
         bool show_enhanced_image,
         bool show_denoised_image,
         bool show_preprocessed_image,
-        bool show_annotation_image)
+        bool show_annotation_image,
+        bool training_samples)
         : class_id(class_id)
+        , class_name(class_name)
+        , extract_target_bbox(extract_target_bbox)
+        , extract_target_orientations(extract_target_orientations)
+        , extract_target_orientations_step(extract_target_orientations_step)
+        , extract_target_orientations_keep(extract_target_orientations_keep)
         , extract_directory(extract_directory)
         , extract_yolo_inputs(extract_yolo_inputs)
         , extract_rotation_norm(extract_rotation_norm)
+        , extract_annotation_mask(extract_annotation_mask)
         , extract_annotation_orientation(extract_annotation_orientation)
         , save_source_image(save_source_image)
         , save_enhanced_image(save_enhanced_image)
@@ -351,15 +372,22 @@ struct ExtractionSettings {
         , show_denoised_image(show_denoised_image)
         , show_preprocessed_image(show_preprocessed_image)
         , show_annotation_image(show_annotation_image)
+        , training_samples(training_samples)
     {
     }
 
     std::string to_string() const {
         std::stringstream ss;
         ss << "class_id: " << class_id << "\n";
+        ss << "class_name: " << class_name << "\n";
+        ss << "extract_target_bbox: " << extract_target_bbox << "\n";
+        ss << "extract_target_orientations: " << extract_target_orientations << "\n";
+        ss << "extract_target_orientations_step: " << extract_target_orientations_step << "\n";
+        ss << "extract_target_orientations_keep: " << extract_target_orientations_keep << "\n";
         ss << "extract_directory: " << extract_directory << "\n";
         ss << "extract_yolo_inputs: " << extract_yolo_inputs << "\n";
         ss << "extract_rotation_norm: " << extract_rotation_norm << "\n";
+        ss << "extract_annotation_mask: " << extract_annotation_mask << "\n";
         ss << "extract_annotation_orientation: " << extract_annotation_orientation << "\n";
         ss << "save_source_image: " << save_source_image << "\n";
         ss << "save_enhanced_image: " << save_enhanced_image << "\n";
@@ -370,14 +398,21 @@ struct ExtractionSettings {
         ss << "show_denoised_image: " << show_denoised_image << "\n";
         ss << "show_preprocessed_image: " << show_preprocessed_image << "\n";
         ss << "show_annotation_image: " << show_annotation_image << "\n";
+        ss << "training_samples: " << training_samples << "\n";
         return ss.str();
     }
 
     int class_id;
+    std::string class_name;
     std::string extract_directory;
+    bool extract_target_bbox;
+    bool extract_target_orientations;
+    double extract_target_orientations_step;
     bool extract_yolo_inputs;
     bool extract_rotation_norm;
+    bool extract_annotation_mask;
     bool extract_annotation_orientation;
+    bool extract_target_orientations_keep;
     bool save_source_image;
     bool save_enhanced_image;
     bool save_denoised_image;
@@ -387,6 +422,7 @@ struct ExtractionSettings {
     bool show_denoised_image;
     bool show_preprocessed_image;
     bool show_annotation_image;
+    bool training_samples;
 };
 
 

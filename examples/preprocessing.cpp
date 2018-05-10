@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <rock_util/LogReader.hpp>
 #include <sonar_processing/SonarImagePreprocessing.hpp>
+#include <rock_util/SonarSampleConverter.hpp>
 #include <sonar_processing/SonarHolder.hpp>
 #include <sonar_processing/ImageFiltering.hpp>
 #include <sonar_processing/Denoising.hpp>
@@ -63,6 +64,14 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
     else {
         sonarlog_target_tracking::common::load_sonar_holder(sample, context->sonar_holder);
     }
+
+
+    std::vector<int> beam_mapping;
+    cv::Mat polar = rock_util::SonarSampleConverter::convert2polar(sample, sample.bin_count, beam_mapping, sonar_util::color_palletes::HEATMAP_PALLETE);
+    cv::imshow("cart", polar);
+    cv::imwrite("cart.png", polar);
+
+    cv::waitKey(0);
     perform_sonar_image_preprocessing(*context);
 }
 
@@ -76,15 +85,21 @@ int main(int argc, char **argv) {
     Context context;
 
     context.dataset_info =  DatasetInfo(argument_parser.dataset_info_filename());
-    std::vector<sonarlog_target_tracking::DatasetInfoEntry> entries = context.dataset_info.positive_entries();
+    std::vector<sonarlog_target_tracking::DatasetInfoEntry> positive_entries = context.dataset_info.positive_entries();
+    std::vector<sonarlog_target_tracking::DatasetInfoEntry> negative_entries = context.dataset_info.negative_entries();
+
     std::cout << context.dataset_info.preprocessing_settings().to_string() << std::endl;
 
     common::load_preprocessing_settings(
         context.dataset_info.preprocessing_settings(),
         context.sonar_image_preprocessing);
 
-    for (size_t i=0; i<entries.size(); i++) {
-        common::exec_samples_from_dataset_entry(entries[i], sample_receiver_callback, &context);
+    for (size_t i=0; i<positive_entries.size(); i++) {
+        common::exec_samples_from_dataset_entry(positive_entries[i], sample_receiver_callback, &context);
+    }
+
+    for (size_t i=0; i<negative_entries.size(); i++) {
+        common::exec_samples_from_dataset_entry(negative_entries[i], sample_receiver_callback, &context);
     }
 
     return 0;

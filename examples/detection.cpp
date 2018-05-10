@@ -251,6 +251,8 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
 
     fflush(stdout);
     cv::imshow("output", output_image);
+
+    if (pContext->sample_count<=1) cv::waitKey();
     cv::waitKey(15);
 }
 

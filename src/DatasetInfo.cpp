@@ -216,14 +216,29 @@ void DatasetInfo::LoadDetectionSettings(const YAML::Node& node) {
 void DatasetInfo::LoadExtractionSettings(const YAML::Node& node) {
     if (!node) return;
     assert(node.Type() == YAML::NodeType::Map);
+    assert(node["class-id"]);
+    assert(node["class-name"]);
+    assert(node["extract-directory"]);
 
-    if (node["class-id"]) {
-        std::cout << "set class-id" << std::endl;
-        extraction_settings_.class_id = node["class-id"].as<int>();
+    extraction_settings_.class_id = node["class-id"].as<int>();
+    extraction_settings_.class_name = node["class-name"].as<std::string>();
+    extraction_settings_.extract_directory = node["extract-directory"].as<std::string>();
+
+
+    if (node["extract-target-bbox"]) {
+        extraction_settings_.extract_target_bbox = node["extract-target-bbox"].as<bool>();
     }
 
-    if (node["extract-directory"]) {
-        extraction_settings_.extract_directory = node["extract-directory"].as<std::string>();
+    if (node["extract-target-orientations"]) {
+        extraction_settings_.extract_target_orientations = node["extract-target-orientations"].as<bool>();
+    }
+
+    if (node["extract-target-orientations-step"]) {
+        extraction_settings_.extract_target_orientations_step = node["extract-target-orientations-step"].as<double>();
+    }
+
+    if (node["extract-target-orientations-keep"]) {
+        extraction_settings_.extract_target_orientations_keep = node["extract-target-orientations-keep"].as<bool>();
     }
 
     if (node["extract-yolo-inputs"]) {
@@ -232,6 +247,10 @@ void DatasetInfo::LoadExtractionSettings(const YAML::Node& node) {
 
     if (node["extract-rotation-norm"]) {
         extraction_settings_.extract_rotation_norm = node["extract-rotation-norm"].as<bool>();
+    }
+
+    if (node["extract-annotation-mask"]) {
+        extraction_settings_.extract_annotation_mask = node["extract-annotation-mask"].as<bool>();
     }
 
     if (node["extract-annotation-orientation"]) {
@@ -272,6 +291,10 @@ void DatasetInfo::LoadExtractionSettings(const YAML::Node& node) {
 
     if (node["show-annotation-image"]) {
         extraction_settings_.show_annotation_image = node["show-annotation-image"].as<bool>();
+    }
+
+    if (node["training-samples"]) {
+       extraction_settings_.training_samples = node["training-samples"].as<bool>();
     }
 }
 
