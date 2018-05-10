@@ -247,6 +247,7 @@ inline void write_bbox_annotation(const std::string& filepath, int id, const cv:
 {
     char buffer[1024];
     snprintf(buffer, 1024, "%d %f %f %f %f %f\n", id, center.x, center.y, size.width, size.height, angle);
+    printf("annotation: %s\n", buffer);
     std::ofstream f;
     f.open(filepath.c_str());
     f << buffer;
@@ -344,169 +345,6 @@ cv::Rect find_mask_rotated_roi(const cv::Mat& src_mask, double angle)
     return image_util::bounding_rect(mask);
 }
 
-void extraction(
-    const std::vector<base::samples::Sonar>& samples,
-    const std::vector<std::vector<cv::Point> >& annotations,
-    const DatasetInfo& dataset_info,
-    std::string folder_type = std::string())
-{
-
-    SonarHolder sonar_holder;
-    SonarImagePreprocessing sonar_image_preprocessing;
-
-    if (folder_type.empty()) folder_type = dataset_info.extraction_settings().class_name;
-
-    std::vector<std::string> files[kExtractionFoldersFinal];
-    std::vector<cv::Rect> bounding_boxs;
-    bool save_image[kExtractionFoldersFinal];
-
-    save_image[kSource] = dataset_info.extraction_settings().save_source_image;
-    save_image[kEnhanced] = dataset_info.extraction_settings().save_enhanced_image;
-    save_image[kDenoised] = dataset_info.extraction_settings().save_denoised_image;
-    save_image[kPreprocessed] = dataset_info.extraction_settings().save_preprocessed_image;
-
-    cv::Size image_size = dataset_info.preprocessing_settings().image_max_size;
-
-    common::load_preprocessing_settings(
-        dataset_info.preprocessing_settings(),
-        sonar_image_preprocessing);
-
-    for (size_t i = 0; i < samples.size(); i++) {
-        if (annotations[i].empty()) continue;
-
-        std::vector<cv::Point> annotation = annotations[i];
-
-        common::load_sonar_holder(samples[i], sonar_holder, image_size);
-
-        if (image_size != cv::Size(-1, -1)) {
-            image_util::resize_points(annotation, annotation, sonar_holder.cart_width_factor(), sonar_holder.cart_height_factor());
-        }
-
-        cv::Mat preprocessed_image;
-        cv::Mat preprocessed_mask;
-        sonar_image_preprocessing.Apply(
-            sonar_holder.cart_image(),
-            sonar_holder.cart_image_mask(),
-            preprocessed_image,
-            preprocessed_mask);
-
-        std::string filename = get_filename(i);
-        std::string source_filepath = file_join(get_folder(dataset_info, kSource, folder_type), filename);
-        std::string enhanced_filepath = file_join(get_folder(dataset_info, kEnhanced, folder_type), filename);
-        std::string denoised_filepath = file_join(get_folder(dataset_info, kDenoised,folder_type), filename);
-        std::string preprocessed_filepath = file_join(get_folder(dataset_info, kPreprocessed, folder_type), filename);
-
-        files[kSource].push_back(source_filepath);
-        files[kEnhanced].push_back(enhanced_filepath);
-        files[kDenoised].push_back(denoised_filepath);
-        files[kPreprocessed].push_back(preprocessed_filepath);
-
-        cv::Mat annotation_mask;
-        image_util::draw_mask_from_points(image_size, annotation, annotation_mask);
-
-        cv::RotatedRect rotated_rect = cv::minAreaRect(annotation);
-        double annotation_angle = (rotated_rect.size.width>=rotated_rect.size.height) ? rotated_rect.angle : rotated_rect.angle+90;
-
-        cv::Rect bbox;
-        cv::Mat source_image;
-        cv::Mat enhanced_image;
-        cv::Mat denoised_image;
-
-        if (dataset_info.extraction_settings().extract_rotation_norm) {
-            cv::Rect roi = find_mask_rotated_roi(sonar_holder.cart_image_mask(), annotation_angle);
-            rotate(annotation_mask, annotation_mask, annotation_angle, roi);
-            rotate(sonar_holder.cart_image(), source_image, annotation_angle, roi);
-            rotate(sonar_image_preprocessing.enhanced(), enhanced_image, annotation_angle, roi);
-            rotate(sonar_image_preprocessing.denoised(), denoised_image, annotation_angle, roi);
-            rotate(preprocessed_image, preprocessed_image, annotation_angle, roi);
-
-            annotation = preprocessing::find_biggest_contour(annotation_mask);
-            bbox = image_util::bounding_rect(annotation_mask);
-            rotated_rect = cv::minAreaRect(annotation);
-            annotation_angle = (rotated_rect.size.width>=rotated_rect.size.height) ? rotated_rect.angle : rotated_rect.angle+90;
-        }
-        else {
-            source_image = sonar_holder.cart_image();
-            enhanced_image = sonar_image_preprocessing.enhanced();
-            denoised_image = sonar_image_preprocessing.denoised();
-            bbox = image_util::bounding_rect(annotation_mask);
-        }
-
-        bounding_boxs.push_back(bbox);
-
-        if (dataset_info.extraction_settings().save_source_image) write_image(source_filepath, source_image);
-        if (dataset_info.extraction_settings().save_enhanced_image) write_image(enhanced_filepath, enhanced_image);
-        if (dataset_info.extraction_settings().save_denoised_image) write_image(denoised_filepath, denoised_image);
-        if (dataset_info.extraction_settings().save_preprocessed_image) write_image(preprocessed_filepath, preprocessed_image);
-
-        if (dataset_info.extraction_settings().extract_yolo_inputs) {
-             for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-                 if (!save_image[k]) continue;
-
-                 std::string dirpath = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-                 std::string filepath = file_join(dirpath, get_filename(i, ".txt"));
-
-                 write_yolo_annotation(filepath, image_size, dataset_info.extraction_settings().class_id, bbox);
-
-                 if (dataset_info.extraction_settings().extract_annotation_mask) {
-                     filepath = file_join(dirpath, get_filename(i, ".png", "-mask"));
-                     cv::imwrite(filepath, annotation_mask);
-                 }
-
-                 if (dataset_info.extraction_settings().extract_annotation_orientation) {
-                     filepath = file_join(dirpath, get_filename(i, ".txt", "-rot"));
-                     write_yolo_annotation(filepath, image_size, dataset_info.extraction_settings().class_id, bbox, annotation_angle);
-                 }
-             }
-        }
-
-        if (dataset_info.extraction_settings().show_source_image &&
-            dataset_info.extraction_settings().save_source_image) {
-            cv::imshow("source", source_image);
-            cv::waitKey(10);
-        }
-
-        if (dataset_info.extraction_settings().show_enhanced_image &&
-            dataset_info.extraction_settings().save_enhanced_image) {
-            cv::imshow("enhanced", enhanced_image);
-            cv::waitKey(10);
-        }
-
-        if (dataset_info.extraction_settings().show_denoised_image &&
-            dataset_info.extraction_settings().save_denoised_image) {
-            cv::imshow("denoised", denoised_image);
-            cv::waitKey(10);
-        }
-
-        if (dataset_info.extraction_settings().show_preprocessed_image &&
-            dataset_info.extraction_settings().save_preprocessed_image) {
-            cv::imshow("preprocessed_image", preprocessed_image);
-            cv::waitKey(10);
-        }
-
-        if (dataset_info.extraction_settings().show_annotation_image) {
-            cv::Mat annotation_image;
-            source_image.copyTo(annotation_image);
-            image_util::draw_contour(annotation_image, annotation_image, cv::Scalar(0, 0, 255), annotation);
-            cv::rectangle(annotation_image, bbox, cv::Scalar(0, 255, 0), 4);
-            cv::circle(annotation_image, cv::Point(bbox.x+bbox.width/2, bbox.y+bbox.height/2), 5, cv::Scalar(0, 255, 0), 5);
-            cv::imshow("annotation", annotation_image);
-            cv::waitKey(10);
-        }
-
-    }
-
-    for (size_t i = 0; i < kExtractionFoldersFinal; i++) {
-        if (!save_image[i]) continue;
-
-        std::string outfolder = get_folder(dataset_info, (ExtractionFolders)i, folder_type);
-        std::string filename = file_join(outfolder, "list.txt");
-        save_file_list(filename, files[i]);
-        write_training_files(outfolder, files[i]);
-    }
-    save_annotations(file_join(get_output_directory(dataset_info, folder_type), "annotations.csv"), bounding_boxs);
-}
-
 void rotate_all(
     const SonarHolder& holder,
     const SonarImagePreprocessing& preprocessing,
@@ -521,195 +359,6 @@ void rotate_all(
     rotate(preprocessed_image, res[kPreprocessed], t, roi);
 }
 
-
-
-void extraction_orientations(
-    const std::vector<base::samples::Sonar>& samples,
-    const std::vector<std::vector<cv::Point> >& annotations,
-    const DatasetInfo& dataset_info,
-    std::string folder_type = std::string())
-{
-    SonarHolder sonar_holder;
-    SonarImagePreprocessing sonar_image_preprocessing;
-
-    if (folder_type.empty()) folder_type = dataset_info.extraction_settings().class_name;
-
-    common::load_preprocessing_settings(
-        dataset_info.preprocessing_settings(),
-        sonar_image_preprocessing);
-
-    cv::Size image_size = dataset_info.preprocessing_settings().image_max_size;
-
-    double theta_step = dataset_info.extraction_settings().extract_target_orientations_step;
-
-    bool save_image[kExtractionFoldersFinal];
-
-    save_image[kSource] = dataset_info.extraction_settings().save_source_image;
-    save_image[kEnhanced] = dataset_info.extraction_settings().save_enhanced_image;
-    save_image[kDenoised] = dataset_info.extraction_settings().save_denoised_image;
-    save_image[kPreprocessed] = dataset_info.extraction_settings().save_preprocessed_image;
-
-    std::vector<std::vector<std::string> > out_directories;
-    out_directories.resize(kExtractionFoldersFinal);
-
-    std::vector<std::vector<std::string> > files;
-    files.resize(kExtractionFoldersFinal);
-
-    for (double theta = 0; theta <= 180; theta+=theta_step) {
-        char buffer[256];
-        snprintf(buffer, 256, "t%08d", (int)theta);
-        std::string dst_dir = buffer;
-        for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-            if (save_image[k]) {
-                std::string root_dir = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-                std::string out_dir = file_join(root_dir, dst_dir);
-                create_directory(out_dir);
-                out_directories[k].push_back(out_dir);
-            }
-        }
-    }
-
-    for (size_t i = 0; i < samples.size(); i++) {
-        if (annotations[i].empty()) continue;
-        printf("%d of %d samples...\n", i+1, samples.size());
-        std::vector<cv::Point> annotation = annotations[i];
-
-        common::load_sonar_holder(samples[i], sonar_holder, image_size);
-
-        if (image_size != cv::Size(-1, -1)) {
-            image_util::resize_points(annotation, annotation, sonar_holder.cart_width_factor(), sonar_holder.cart_height_factor());
-        }
-
-        cv::Mat preprocessed_image;
-        cv::Mat preprocessed_mask;
-        sonar_image_preprocessing.Apply(
-            sonar_holder.cart_image(),
-            sonar_holder.cart_image_mask(),
-            preprocessed_image,
-            preprocessed_mask);
-
-        cv::Mat annotation_mask;
-        image_util::draw_mask_from_points(image_size, annotation, annotation_mask);
-
-        cv::RotatedRect rotated_rect = cv::minAreaRect(annotation);
-        double annotation_angle = (rotated_rect.size.width>=rotated_rect.size.height) ? rotated_rect.angle : rotated_rect.angle+90;
-
-        cv::Mat results[kExtractionFoldersFinal];
-
-        std::string filename = get_filename(i);
-
-        if (!dataset_info.extraction_settings().extract_target_orientations_keep) {
-            cv::Rect roi = find_mask_rotated_roi(sonar_holder.cart_image_mask(), annotation_angle);
-            rotate(annotation_mask, annotation_mask, annotation_angle, roi);
-            rotate_all(sonar_holder, sonar_image_preprocessing, preprocessed_image, roi, annotation_angle, results);
-
-            int idx = 0;
-            for (double theta = 0; theta <= 180; theta+=theta_step) {
-                std::cout << "Idx: " << idx << " Theta: " << theta << std::endl;
-
-                cv::Mat rot_annotation_mask;
-                rotate(annotation_mask, rot_annotation_mask, theta);
-                cv::Rect rc =  image_util::bounding_rect(rot_annotation_mask);
-
-                for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-                    if (save_image[k]) {
-                        cv::Mat rotated;
-                        rotate(results[k], rotated, theta);
-                        std::string filepath = file_join(out_directories[k][idx], filename);
-                        files[k].push_back(filepath);
-
-                        cv::Mat out;
-                        rotated(rc).copyTo(out);
-                        write_image(filepath, out);
-                    }
-                }
-                idx++;
-            }
-        }
-        else {
-            cv::Mat canvas;
-            cv::cvtColor(sonar_holder.cart_image(), canvas, CV_GRAY2BGR);
-
-            cv::Rect orig_rc = image_util::bounding_rect(annotation_mask);
-            cv::Rect orig_roi = image_util::bounding_rect(sonar_holder.cart_image_mask());
-
-            cv::Mat orig_results[kExtractionFoldersFinal];
-            rotate_all(sonar_holder, sonar_image_preprocessing, preprocessed_image, orig_roi, 360.0, orig_results);
-
-            image_util::draw_rotated_rect(canvas, cv::Scalar(0, 0, 255), rotated_rect);
-            cv::rectangle(canvas, orig_rc, cv::Scalar(0, 0, 255), 3);
-
-            cv::imshow("canvas", canvas);
-            cv::waitKey(15);
-
-            cv::Rect roi = find_mask_rotated_roi(sonar_holder.cart_image_mask(), annotation_angle);
-            rotate(annotation_mask, annotation_mask, annotation_angle, roi);
-            rotate_all(sonar_holder, sonar_image_preprocessing, preprocessed_image, roi, annotation_angle, results);
-
-            double theta_step2 = theta_step / 2;
-            double angle = 180-annotation_angle;
-            double last_theta = 180+theta_step2;
-
-            if (angle >= last_theta) angle = angle-last_theta;
-
-            int idx = 0;
-            for (double t = 0; t <= 180; t+=theta_step) {
-                double theta = 180-t;
-                double theta_begin = theta-theta_step2;
-                double theta_end = theta+theta_step2;
-
-                std::cout << "theta: " << theta << std::endl;
-
-                if (angle >= theta_begin && angle < theta_end) {
-                    std::cout << "angle: " << angle << std::endl;
-                    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-                        if (save_image[k]) {
-                            std::string filepath = file_join(out_directories[k][out_directories[k].size()-idx-1], filename);
-                            files[k].push_back(filepath);
-                            cv::Mat out;
-                            orig_results[k](orig_rc).copyTo(out);
-                            write_image(filepath, out);
-                        }
-                    }
-
-                }
-                else {
-                    cv::Mat rot_mask;
-                    rotate(annotation_mask, rot_mask, -t);
-                    cv::Rect rot_rc =  image_util::bounding_rect(rot_mask);
-
-                    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-                        if (save_image[k]) {
-                            cv::Mat rot;
-                            rotate(results[k], rot, -t);
-
-                            std::string filepath = file_join(out_directories[k][out_directories[k].size()-idx-1], filename);
-                            files[k].push_back(filepath);
-
-                            cv::Mat out;
-                            rot(rot_rc).copyTo(out);
-                            write_image(filepath, out);
-                        }
-
-                    }
-                }
-                idx++;
-            }
-        }
-    }
-
-    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-        if (save_image[k]) {
-            std::string root_dir = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-            std::string filename = file_join(root_dir, "list.txt");
-            save_file_list(filename, files[k]);
-            write_training_files(root_dir,files[k]);
-        }
-    }
-
-
-}
-
 void save_bbox_data(
     const cv::Mat image,
     const cv::Rect& rect,
@@ -722,7 +371,11 @@ void save_bbox_data(
 {
     std::string image_filepath = file_join(root_dir, get_filename(index, ".png", suffix));
     files.push_back(image_filepath);
-    write_image(image_filepath, image(rect));
+    cv::Mat out;
+    image(rect).copyTo(out);
+    cv::imshow("out", out);
+    cv::waitKey(15);
+    write_image(image_filepath, out);
     write_bbox_annotation(
         file_join(root_dir, get_filename(index, ".txt", suffix)),
         dataset_info.extraction_settings().class_id,
@@ -769,10 +422,10 @@ void save_bbox_data_multiple_angles(
     const bool save_image[kExtractionFoldersFinal],
     const size_t index,
     const DatasetInfo& dataset_info,
+    const float theta_step,
     std::vector<std::string> (&files)[kExtractionFoldersFinal],
     std::string folder_type = std::string())
 {
-    const float theta_step = 10;
     const float gt_angle = rbox.angle;
 
     cv::Mat rot_images[kExtractionFoldersFinal];
@@ -794,97 +447,12 @@ void save_bbox_data_multiple_angles(
         cv::Rect rot_rect =  image_util::bounding_rect(rot_gt_mask);
 
         char buffer[256];
-        snprintf(buffer, 256, "-%04d", (int)theta);
+        snprintf(buffer, 256, "-%04d-bbox", (int)theta);
 
         save_images_bbox_data(
             rot_images, rot_rect, rot_rbox, save_image,
             index, dataset_info, files, folder_type, buffer);
     }
-
-}
-
-void extraction_bbox(
-    const std::vector<base::samples::Sonar>& samples,
-    const std::vector<std::vector<cv::Point> >& annotations,
-    const DatasetInfo& dataset_info,
-    std::string folder_type = std::string())
-{
-    SonarHolder sonar_holder;
-    SonarImagePreprocessing sonar_image_preprocessing;
-
-    if (folder_type.empty()) folder_type = dataset_info.extraction_settings().class_name;
-
-
-    cv::Mat images[kExtractionFoldersFinal];
-    std::vector<std::string> files[kExtractionFoldersFinal];
-    std::vector<cv::Rect> bounding_boxs;
-    bool save_image[kExtractionFoldersFinal];
-
-    save_image[kSource] = dataset_info.extraction_settings().save_source_image;
-    save_image[kEnhanced] = dataset_info.extraction_settings().save_enhanced_image;
-    save_image[kDenoised] = dataset_info.extraction_settings().save_denoised_image;
-    save_image[kPreprocessed] = dataset_info.extraction_settings().save_preprocessed_image;
-
-    cv::Size image_size = dataset_info.preprocessing_settings().image_max_size;
-
-    common::load_preprocessing_settings(
-        dataset_info.preprocessing_settings(),
-        sonar_image_preprocessing);
-
-    for (size_t i = 0; i < samples.size(); i++) {
-        if (annotations[i].empty()) continue;
-        printf("%d of %d samples...\n", i+1, samples.size());
-        std::vector<cv::Point> annotation = annotations[i];
-
-        common::load_sonar_holder(samples[i], sonar_holder, image_size);
-
-        if (image_size != cv::Size(-1, -1)) {
-            image_util::resize_points(annotation, annotation, sonar_holder.cart_width_factor(), sonar_holder.cart_height_factor());
-        }
-
-        cv::Mat preprocessed_image;
-        cv::Mat preprocessed_mask;
-        sonar_image_preprocessing.Apply(
-            sonar_holder.cart_image(),
-            sonar_holder.cart_image_mask(),
-            preprocessed_image,
-            preprocessed_mask);
-
-
-        images[kSource] = sonar_holder.cart_image();
-        images[kEnhanced] = sonar_image_preprocessing.enhanced();
-        images[kDenoised] = sonar_image_preprocessing.denoised();
-        images[kPreprocessed] = preprocessed_image;
-
-        // ground truth mask
-        cv::Mat gt_mask;
-        image_util::draw_mask_from_points(image_size, annotation, gt_mask);
-
-        // load ground truth rotated rect
-        cv::RotatedRect rotated_rect = load_rotated_rect(annotation);
-
-        // returns ground truth bounding rect
-        cv::Rect rect = image_util::bounding_rect(gt_mask);
-
-        cv::imshow("bbox", images[kSource](rect));
-        cv::waitKey(15);
-
-        // save bounding box data
-        save_images_bbox_data(images, rect, rotated_rect, save_image, i, dataset_info, files, folder_type);
-
-        // save bounding box multiple angles
-        save_bbox_data_multiple_angles(images, gt_mask, rect, rotated_rect, save_image, i, dataset_info, files, folder_type);
-    }
-
-    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-        if (save_image[k]) {
-            std::string root_dir = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-            std::string filename = file_join(root_dir, "list.txt");
-            save_file_list(filename, files[k]);
-            write_training_files(root_dir,files[k]);
-        }
-    }
-
 
 }
 
@@ -1057,6 +625,61 @@ void extract_sample_multiple_angles(
     }
 }
 
+void extract_sample_bbox(
+    Context& context,
+    const cv::Mat& source_image,
+    const cv::Mat& source_mask,
+    const std::vector<cv::Point>& annotation)
+{
+    std::string class_name = context.dataset_info.extraction_settings().class_name;
+
+    cv::Mat gt_mask;
+    image_util::draw_mask_from_points(source_image.size(), annotation, gt_mask);
+
+    cv::Mat images[kExtractionFoldersFinal];
+    apply_preprocessing(source_image, source_mask, context.preprocessing, images);
+
+    bool save_options[kExtractionFoldersFinal];
+    load_save_options(context.dataset_info.extraction_settings(), save_options);
+
+    cv::Rect bbox = image_util::bounding_rect(gt_mask);
+    cv::RotatedRect rbbox = load_rotated_rect(annotation);
+
+
+    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
+        if (!save_options[k]) continue;
+        std::string root_dir = get_folder(context.dataset_info, (ExtractionFolders)k, class_name);
+        std::string image_filepath = file_join(root_dir, get_filename(context.sample_count, ".png", "-orig"));
+        write_image(image_filepath, images[k]);
+    }
+
+
+    save_images_bbox_data(
+        images,
+        bbox,
+        rbbox,
+        save_options,
+        context.sample_count,
+        context.dataset_info,
+        context.files,
+        class_name,
+        "-bbox");
+
+    if (context.dataset_info.extraction_settings().extract_target_orientations) {
+        save_bbox_data_multiple_angles(
+            images,
+            gt_mask,
+            bbox,
+            rbbox,
+            save_options,
+            context.sample_count,
+            context.dataset_info,
+            context.dataset_info.extraction_settings().extract_target_orientations_step,
+            context.files,
+            class_name);
+    }
+}
+
 void sample_receiver_callback(const base::samples::Sonar& sample, int sample_index, void *user_data)
 {
     printf("Current sample: %d\n", sample_index);
@@ -1083,10 +706,14 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
     const cv::Mat& source_image = pContext->sonar_holder.cart_image();
     const cv::Mat& source_mask = pContext->sonar_holder.cart_image_mask();
 
-    extract_sample(*pContext, source_image, source_mask, annotation);
-
-    if (pContext->dataset_info.extraction_settings().extract_target_orientations)
-        extract_sample_multiple_angles(*pContext, source_image, source_mask, annotation);
+    if (pContext->dataset_info.extraction_settings().extract_target_bbox) {
+        extract_sample_bbox(*pContext, source_image, source_mask, annotation);
+    }
+    else {
+        extract_sample(*pContext, source_image, source_mask, annotation);
+        if (pContext->dataset_info.extraction_settings().extract_target_orientations)
+            extract_sample_multiple_angles(*pContext, source_image, source_mask, annotation);
+    }
 
     pContext->sample_count++;
 }
@@ -1096,6 +723,34 @@ void load_log_annotation(Context& context, sonarlog_target_tracking::DatasetInfo
     context.annotations.clear();
     if (!entry.annotation_filename.empty() && common::file_exists(entry.annotation_filename)) {
         common::load_log_annotation(entry.annotation_filename, entry.annotation_name, context.annotations);
+    }
+}
+
+void save_annotation_files(Context& context)
+{
+    bool save_options[kExtractionFoldersFinal];
+    load_save_options(context.dataset_info.extraction_settings(), save_options);
+
+    std::string class_name = context.dataset_info.extraction_settings().class_name;
+    std::string outfolder = get_output_directory(context.dataset_info, class_name);
+
+    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
+        if (!save_options[k]) continue;
+        std::string bbox_annotation_filepath = file_join(outfolder, FOLDERS[k]+"_bbox_annotations.txt");
+        std::string rotated_bbox_annotation_filepath = file_join(outfolder, FOLDERS[k]+"_rotated_bbox_annotations.txt");
+
+        save_bbox_annotations(
+            bbox_annotation_filepath,
+            context.files[k],
+            context.boxes,
+            class_name);
+
+        save_rotated_bbox_annotations(
+            rotated_bbox_annotation_filepath,
+            context.files[k],
+            context.boxes,
+            context.rboxes,
+            class_name);
     }
 }
 
@@ -1128,31 +783,8 @@ void exec_samples(Context& context)
         }
     }
 
-    bool save_options[kExtractionFoldersFinal];
-    load_save_options(context.dataset_info.extraction_settings(), save_options);
-
-    std::string class_name = context.dataset_info.extraction_settings().class_name;
-    std::string outfolder = get_output_directory(context.dataset_info, class_name);
-
-    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-        if (!save_options[k]) continue;
-        std::string bbox_annotation_filepath = file_join(outfolder, FOLDERS[k]+"_bbox_annotations.txt");
-        std::string rotated_bbox_annotation_filepath = file_join(outfolder, FOLDERS[k]+"_rotated_bbox_annotations.txt");
-
-        save_bbox_annotations(
-            bbox_annotation_filepath,
-            context.files[k],
-            context.boxes,
-            class_name);
-
-        save_rotated_bbox_annotations(
-            rotated_bbox_annotation_filepath,
-            context.files[k],
-            context.boxes,
-            context.rboxes,
-            class_name);
-    }
-
+    if (!context.dataset_info.extraction_settings().extract_target_bbox)
+        save_annotation_files(context);
 }
 
 
@@ -1168,46 +800,6 @@ int main(int argc, char **argv)
     context.dataset_info = DatasetInfo(argument_parser.dataset_info_filename());
     create_directories(context.dataset_info, context.dataset_info.extraction_settings().class_name);
     exec_samples(context);
-
-    // std::cout << "Extraction Settings: " << std::endl;
-    // std::cout << dataset_info.extraction_settings().to_string() << std::endl;
-    //
-    // printf("Processing Positive Samples\n");
-    // for (size_t i=0; i<positive_entries.size(); i++) {
-    //
-    //     std::cout << "Annotation Filename: " << positive_entries[i].annotation_filename << std::endl;
-    //     context.annotations.clear();
-    //     if (!positive_entries[i].annotation_filename.empty() && common::file_exists(positive_entries[i].annotation_filename)) {
-    //         common::load_log_annotation(
-    //             positive_entries[i].annotation_filename,
-    //             positive_entries[i].annotation_name,
-    //             context.annotations);
-    //     }
-    //
-    //     printf("Processing log: %s\n", positive_entries[i].log_filename.c_str());
-    //     context.name = positive_entries[i].name;
-    //     context.hog_detector.reset_detection_stats();
-    //     common::exec_samples_from_dataset_entry(positive_entries[i], sample_receiver_callback, &context);
-    //     printf("\n");
-    // }
-    //
-
-    // std::vector<std::vector<cv::Point> > annotations;
-    // std::vector<base::samples::Sonar> samples;
-    //
-    // load_samples(dataset_info, samples, annotations);
-    // create_directories(dataset_info, dataset_info.extraction_settings().class_name);
-    //
-    //
-    // if (dataset_info.extraction_settings().extract_target_bbox) {
-    //     extraction_bbox(samples, annotations, dataset_info, dataset_info.extraction_settings().class_name);
-    // }
-    // else if (dataset_info.extraction_settings().extract_target_orientations) {
-    //     extraction_orientations(samples, annotations, dataset_info, dataset_info.extraction_settings().class_name);
-    // }
-    // else {
-    //     extraction(samples, annotations, dataset_info, dataset_info.extraction_settings().class_name);
-    // }
 
     return 0;
 }
