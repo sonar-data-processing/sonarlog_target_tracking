@@ -123,12 +123,13 @@ inline void create_directories(const DatasetInfo& dataset_info, std::string fold
     }
 }
 
-inline std::string get_filename(int index, std::string ext = ".png", std::string suffix = std::string())
+inline std::string get_filename(int index, std::string ext = ".png", std::string suffix = std::string(), std::string prefix = std::string())
 {
     char buffer[256];
     snprintf(buffer, 256, "sample-%08d", index);
 
     std::stringstream ss;
+    if (!prefix.empty()) ss << prefix;
     ss << buffer;
     if (!suffix.empty()) ss << suffix;
     ss << ext;
@@ -243,10 +244,26 @@ inline void write_yolo_annotation(const std::string& filepath, const cv::Size& s
     write_yolo_annotation(filepath, size, id, bbox, std::numeric_limits<double>::quiet_NaN());
 }
 
-inline void write_bbox_annotation(const std::string& filepath, int id, const cv::Point2f center, const cv::Size2f size, float angle)
+inline void write_bbox_annotation(
+    const std::string& filepath,
+    int id,
+    const cv::Rect& rect,
+    const cv::Point2f& center,
+    const cv::Size2f& size,
+    float angle)
 {
+    float x1 = rect.x;
+    float y1 = rect.y;
+    float x2 = rect.width+x1;
+    float y2 = rect.height+y1;
     char buffer[1024];
-    snprintf(buffer, 1024, "%d %f %f %f %f %f\n", id, center.x, center.y, size.width, size.height, angle);
+
+    snprintf(buffer, 1024, "%d %f %f %f %f %f %f %f %f %f\n",
+        id,
+        x1, y1, x2, y2,
+        center.x, center.y, size.width, size.height,
+        angle);
+
     printf("annotation: %s\n", buffer);
     std::ofstream f;
     f.open(filepath.c_str());
@@ -281,7 +298,7 @@ inline void write_rbbox_annotation(const std::string& filepath, const cv::Size& 
 
     cv::Point2f center = cv::Point2f(rbbox.center.x*scale_factor, rbbox.center.y*scale_factor);
     cv::Size2f size = cv::Size2f(w, h);
-    write_bbox_annotation(filepath, id, center, size, rbbox.angle);
+    // write_bbox_annotation(filepath, id, center, size, rbbox.angle);
 }
 
 inline void write_training_files(const std::string& dirpath, std::vector<std::string> files)
@@ -323,6 +340,12 @@ inline cv::RotatedRect load_rotated_rect(cv::InputArray src) {
 
     return bbox;
 
+}
+
+inline cv::RotatedRect load_rotated_rect_from_mask(const cv::Mat& mask)
+{
+    std::vector<cv::Point> contour = preprocessing::find_biggest_contour(mask);
+    return  load_rotated_rect(contour);
 }
 
 void rotate(const cv::Mat& src, cv::Mat& dst, double angle, const cv::Rect roi = cv::Rect(0, 0, -1, -1))
@@ -367,18 +390,16 @@ void save_bbox_data(
     const DatasetInfo& dataset_info,
     const std::string& root_dir,
     std::vector<std::string>& files,
-    std::string suffix = std::string())
+    std::string suffix = std::string(),
+    std::string prefix = std::string())
 {
-    std::string image_filepath = file_join(root_dir, get_filename(index, ".png", suffix));
+    std::string image_filepath = file_join(root_dir, get_filename(index, ".png", suffix, prefix));
     files.push_back(image_filepath);
-    cv::Mat out;
-    image(rect).copyTo(out);
-    cv::imshow("out", out);
-    cv::waitKey(15);
-    write_image(image_filepath, out);
+    write_image(image_filepath, image);
     write_bbox_annotation(
-        file_join(root_dir, get_filename(index, ".txt", suffix)),
+        file_join(root_dir, get_filename(index, ".txt", suffix, prefix)),
         dataset_info.extraction_settings().class_id,
+        rect,
         cv::Point2f(rbox.center.x-rect.x, rbox.center.y-rect.y),
         rbox.size,
         rbox.angle);
@@ -393,12 +414,13 @@ void save_images_bbox_data(
     const DatasetInfo& dataset_info,
     std::vector<std::string> (&files)[kExtractionFoldersFinal],
     std::string folder_type = std::string(),
-    std::string suffix = std::string())
+    std::string suffix = std::string(),
+    std::string prefix = std::string())
 {
     for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
         if (save_image[k]) {
             std::string root_dir = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-            save_bbox_data(images[k], rect, rbox, index, dataset_info, root_dir, files[k], suffix);
+            save_bbox_data(images[k], rect, rbox, index, dataset_info, root_dir, files[k], suffix, prefix);
         }
     }
 }
@@ -436,12 +458,8 @@ void save_bbox_data_multiple_angles(
         rotate(gt_mask, rot_gt_mask, theta_rot);
         rotate_images(images, rot_images, save_image, theta_rot);
 
-
-        // find contour
-        std::vector<cv::Point> contour = preprocessing::find_biggest_contour(rot_gt_mask);
-
         // load ground truth rotated rect
-        cv::RotatedRect rot_rbox = load_rotated_rect(contour);
+        cv::RotatedRect rot_rbox = load_rotated_rect_from_mask(rot_gt_mask);
 
         // load bounding box
         cv::Rect rot_rect =  image_util::bounding_rect(rot_gt_mask);
@@ -632,6 +650,7 @@ void extract_sample_bbox(
     const std::vector<cv::Point>& annotation)
 {
     std::string class_name = context.dataset_info.extraction_settings().class_name;
+    int class_id = context.dataset_info.extraction_settings().class_id;
 
     cv::Mat gt_mask;
     image_util::draw_mask_from_points(source_image.size(), annotation, gt_mask);
@@ -645,15 +664,6 @@ void extract_sample_bbox(
     cv::Rect bbox = image_util::bounding_rect(gt_mask);
     cv::RotatedRect rbbox = load_rotated_rect(annotation);
 
-
-    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
-        if (!save_options[k]) continue;
-        std::string root_dir = get_folder(context.dataset_info, (ExtractionFolders)k, class_name);
-        std::string image_filepath = file_join(root_dir, get_filename(context.sample_count, ".png", "-orig"));
-        write_image(image_filepath, images[k]);
-    }
-
-
     save_images_bbox_data(
         images,
         bbox,
@@ -662,8 +672,31 @@ void extract_sample_bbox(
         context.sample_count,
         context.dataset_info,
         context.files,
+        class_name);
+
+    cv::Mat flip_gt_mask;
+    cv::flip(gt_mask, flip_gt_mask, 1);
+
+    cv::Rect flip_bbox = image_util::bounding_rect(flip_gt_mask);
+    cv::RotatedRect flip_rbbox = load_rotated_rect_from_mask(flip_gt_mask);
+
+    cv::Mat flip_images[kExtractionFoldersFinal];
+    for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
+        if (!save_options[k]) continue;
+        cv::flip(images[k], flip_images[k], 1);
+    }
+
+    save_images_bbox_data(
+        flip_images,
+        flip_bbox,
+        flip_rbbox,
+        save_options,
+        context.sample_count,
+        context.dataset_info,
+        context.files,
         class_name,
-        "-bbox");
+        std::string(),
+        "flip-");
 
     if (context.dataset_info.extraction_settings().extract_target_orientations) {
         save_bbox_data_multiple_angles(
