@@ -7,7 +7,7 @@
 #include <sonar_processing/SonarHolder.hpp>
 #include <sonar_processing/SonarImagePreprocessing.hpp>
 #include <sonar_processing/Preprocessing.hpp>
-#include "ArgumentParser.hpp"
+#include <sonarlog_target_tracking/ArgumentParser.hpp>
 #include "Common.hpp"
 #include "DatasetInfo.hpp"
 
@@ -384,6 +384,7 @@ void rotate_all(
 
 void save_bbox_data(
     const cv::Mat image,
+    const cv::Mat& gt_mask,
     const cv::Rect& rect,
     const cv::RotatedRect& rbox,
     const size_t index,
@@ -396,6 +397,10 @@ void save_bbox_data(
     std::string image_filepath = file_join(root_dir, get_filename(index, ".png", suffix, prefix));
     files.push_back(image_filepath);
     write_image(image_filepath, image);
+
+    std::string gt_mask_filepath = file_join(root_dir, get_filename(index, "-mask.png", suffix, prefix));
+    write_image(gt_mask_filepath, gt_mask);
+
     write_bbox_annotation(
         file_join(root_dir, get_filename(index, ".txt", suffix, prefix)),
         dataset_info.extraction_settings().class_id,
@@ -407,6 +412,7 @@ void save_bbox_data(
 
 void save_images_bbox_data(
     const cv::Mat images[kExtractionFoldersFinal],
+    const cv::Mat& gt_mask,
     const cv::Rect& rect,
     const cv::RotatedRect& rbox,
     const bool save_image[kExtractionFoldersFinal],
@@ -420,7 +426,7 @@ void save_images_bbox_data(
     for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
         if (save_image[k]) {
             std::string root_dir = get_folder(dataset_info, (ExtractionFolders)k, folder_type);
-            save_bbox_data(images[k], rect, rbox, index, dataset_info, root_dir, files[k], suffix, prefix);
+            save_bbox_data(images[k], gt_mask, rect, rbox, index, dataset_info, root_dir, files[k], suffix, prefix);
         }
     }
 }
@@ -468,7 +474,7 @@ void save_bbox_data_multiple_angles(
         snprintf(buffer, 256, "-%04d-bbox", (int)theta);
 
         save_images_bbox_data(
-            rot_images, rot_rect, rot_rbox, save_image,
+            rot_images, rot_gt_mask, rot_rect, rot_rbox, save_image,
             index, dataset_info, files, folder_type, buffer);
     }
 
@@ -666,6 +672,7 @@ void extract_sample_bbox(
 
     save_images_bbox_data(
         images,
+        gt_mask,
         bbox,
         rbbox,
         save_options,
@@ -688,6 +695,7 @@ void extract_sample_bbox(
 
     save_images_bbox_data(
         flip_images,
+        flip_gt_mask,
         flip_bbox,
         flip_rbbox,
         save_options,
