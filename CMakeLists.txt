@@ -4,8 +4,10 @@ project (sonarlog_target_tracking)
 option (COMPILE_EXTRACTION          OFF)
 option (COMPILE_VIDEOCONV           OFF)
 option (COMPILE_PREPROCESSING       OFF)
+option (COMPILE_TRAINING            OFF)
 option (COMPILE_DETECTION           OFF)
 option (COMPILE_EVALUATION          OFF)
+option (NEAREST_NEIGHBOOR           OFF)
 
 set ( COMPILE_EXTRACTION      ON )
 set ( COMPILE_VIDEOCONV       ON )
@@ -13,6 +15,7 @@ set ( COMPILE_PREPROCESSING   ON )
 set ( COMPILE_TRAINING        ON )
 set ( COMPILE_DETECTION       ON )
 set ( COMPILE_EVALUATION      ON )
+set ( NEAREST_NEIGHBOOR       ON )
 
 list(APPEND CMAKE_MODULE_PATH $ENV{SONAR_TOOLKIT_PREFIX}/base/cmake)
 
@@ -141,7 +144,7 @@ if (COMPILE_PREPROCESSING)
         sonarlog-preprocessing
         examples/preprocessing.cpp
         ${SOURCES}
-    )
+    )         
 
     target_link_libraries (
         sonarlog-preprocessing
@@ -201,3 +204,41 @@ if (COMPILE_EVALUATION)
     )
 
 endif(COMPILE_EVALUATION)
+
+if (NEAREST_NEIGHBOOR)
+
+    message ( STATUS "Compile Evaluation example")
+
+    add_executable (
+        sonarlog-nearest_neighbor
+        examples/nearest_neighbor.cpp
+        ${SOURCES}
+    )
+
+    target_link_libraries (
+        sonarlog-nearest_neighbor
+        ${LIBS}
+    )
+
+    install (
+        TARGETS sonarlog-nearest_neighbor
+        DESTINATION bin
+    )
+
+endif(NEAREST_NEIGHBOOR)
+
+add_executable (
+    sonargen
+    examples/sonargen.cpp
+)
+
+target_link_libraries (
+    sonargen
+    ${LIBS}
+)
+
+install (
+    TARGETS sonargen
+    DESTINATION bin
+)
+

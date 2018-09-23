@@ -65,13 +65,6 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
         sonarlog_target_tracking::common::load_sonar_holder(sample, context->sonar_holder);
     }
 
-
-    std::vector<int> beam_mapping;
-    cv::Mat polar = rock_util::SonarSampleConverter::convert2polar(sample, sample.bin_count, beam_mapping, sonar_util::color_palletes::HEATMAP_PALLETE);
-    cv::imshow("cart", polar);
-    cv::imwrite("cart.png", polar);
-
-    cv::waitKey(0);
     perform_sonar_image_preprocessing(*context);
 }
 

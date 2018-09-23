@@ -35,6 +35,7 @@ enum ExtractionFolders {
 
 struct Context {
     size_t sample_count;
+    int sample_index;
     DatasetInfo dataset_info;
     AnnotationList annotations;
     SonarHolder sonar_holder;
@@ -42,6 +43,7 @@ struct Context {
     std::vector<std::string> files[kExtractionFoldersFinal];
     std::vector<cv::Rect> boxes;
     std::vector<cv::RotatedRect> rboxes;
+    std::string log_basename;
 };
 
 inline void write_image(
@@ -76,11 +78,13 @@ inline std::string file_join(const std::string& src0, const std::string& src1) {
 
 inline std::string get_output_directory(const DatasetInfo& dataset_info, std::string folder_type = std::string())
 {
-    create_directory(dataset_info.extraction_settings().extract_directory);
+    if (!create_directory(dataset_info.extraction_settings().extract_directory)){
+        std::cout << "Failed to create the folder: " << dataset_info.extraction_settings().extract_directory << std::endl;
+    }
 
     std::string dirpath;
     if (dataset_info.extraction_settings().extract_target_bbox)
-        dirpath = file_join(dataset_info.extraction_settings().extract_directory, "bbox");
+        dirpath = dataset_info.extraction_settings().extract_directory;
     else if (dataset_info.extraction_settings().extract_target_orientations)
         dirpath = file_join(dataset_info.extraction_settings().extract_directory, "orientations");
     else if (dataset_info.extraction_settings().extract_rotation_norm)
@@ -88,7 +92,10 @@ inline std::string get_output_directory(const DatasetInfo& dataset_info, std::st
     else
         dirpath = file_join(dataset_info.extraction_settings().extract_directory, "original");
 
-    create_directory(dirpath);
+    if (!create_directory(dirpath)) {
+        std::cout << "Failed to create the folder: " << dirpath << std::endl;
+    }
+
     return file_join(dirpath, folder_type);
 }
 
@@ -98,7 +105,10 @@ inline std::string get_folder(
     std::string folder_type = std::string(),
     std::string suffix = "")
 {
-    return file_join(get_output_directory(dataset_info, folder_type), FOLDERS[k]+suffix);
+    // if (k >= kExtractionFoldersFinal)
+        // return get_output_directory(dataset_info, folder_type);
+    // return file_join(get_output_directory(dataset_info, folder_type), FOLDERS[k]+suffix);
+    return get_output_directory(dataset_info, folder_type);
 }
 
 inline void create_directories(const DatasetInfo& dataset_info, std::string folder_type = std::string())
@@ -107,7 +117,7 @@ inline void create_directories(const DatasetInfo& dataset_info, std::string fold
     create_directory(output_directory);
 
     if (dataset_info.extraction_settings().save_source_image) {
-        create_directory(file_join(output_directory, FOLDERS[kSource]));
+        // create_directory(file_join(output_directory, FOLDERS[kSource]));
     }
 
     if (dataset_info.extraction_settings().save_enhanced_image) {
@@ -334,9 +344,9 @@ inline cv::RotatedRect load_rotated_rect(cv::InputArray src) {
         bbox.angle += 90;
     }
 
-    if (bbox.angle < 0) {
-        bbox.angle = bbox.angle+180;
-    }
+    // if (bbox.angle < 0) {
+    //     bbox.angle = bbox.angle+180;
+    // }
 
     return bbox;
 
@@ -649,6 +659,15 @@ void extract_sample_multiple_angles(
     }
 }
 
+
+void draw_text(cv::Mat& dst, cv::Point text_org, std::string text) {
+    const double font_scale = 0.8;
+    const int font_face = cv::FONT_HERSHEY_COMPLEX;
+    const int text_thickness = 2;
+    int baseline = 0;
+    cv::Size text_size = cv::getTextSize(text, font_face, font_scale, text_thickness, &baseline);
+    cv::putText(dst, text.c_str(), text_org, font_face, font_scale, cv::Scalar(0, 0, 255), text_thickness);
+}
 void extract_sample_bbox(
     Context& context,
     const cv::Mat& source_image,
@@ -670,22 +689,54 @@ void extract_sample_bbox(
     cv::Rect bbox = image_util::bounding_rect(gt_mask);
     cv::RotatedRect rbbox = load_rotated_rect(annotation);
 
+    std::string folder_type = file_join(class_name, context.log_basename);
+
+    cv::Mat canvas;
+    cv::cvtColor(source_image, canvas, cv::COLOR_GRAY2BGR);
+    cv::rectangle(canvas, bbox, cv::Scalar(0, 255, 0), 3);
+    image_util::draw_rotated_rect(canvas, cv::Scalar(255, 0, 0), rbbox);
+
+    cv::Point2f pts[4];
+    rbbox.points( pts );
+    char buff[64];
+    snprintf(buff,64, "%d", (int)rbbox.angle);
+    draw_text(canvas, cv::Point(pts[0].x, pts[0].y), buff);
+
+    cv::imshow("canvas", canvas);
+    cv::waitKey(15);
+
     save_images_bbox_data(
         images,
         gt_mask,
         bbox,
         rbbox,
         save_options,
-        context.sample_count,
+        // context.sample_count,
+        context.sample_index,
         context.dataset_info,
         context.files,
-        class_name);
+        folder_type);
+
+    cv::Mat flip_source_image;
+    cv::flip(source_image, flip_source_image, 1);
 
     cv::Mat flip_gt_mask;
     cv::flip(gt_mask, flip_gt_mask, 1);
 
     cv::Rect flip_bbox = image_util::bounding_rect(flip_gt_mask);
     cv::RotatedRect flip_rbbox = load_rotated_rect_from_mask(flip_gt_mask);
+
+    cv::Mat flip_canvas;
+    cv::cvtColor(flip_source_image, flip_canvas, cv::COLOR_GRAY2BGR);
+    cv::rectangle(flip_canvas, flip_bbox, cv::Scalar(0, 255, 0), 3);
+    image_util::draw_rotated_rect(flip_canvas, cv::Scalar(255, 0, 0), flip_rbbox);
+
+    flip_rbbox.points(pts);
+    snprintf(buff,64, "%d", (int)flip_rbbox.angle);
+    draw_text(flip_canvas, cv::Point(pts[0].x, pts[0].y), buff);
+
+    cv::imshow("flip_canvas", flip_canvas);
+    cv::waitKey(15);
 
     cv::Mat flip_images[kExtractionFoldersFinal];
     for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
@@ -699,10 +750,10 @@ void extract_sample_bbox(
         flip_bbox,
         flip_rbbox,
         save_options,
-        context.sample_count,
+        context.sample_index,
         context.dataset_info,
         context.files,
-        class_name,
+        folder_type,
         std::string(),
         "flip-");
 
@@ -725,6 +776,7 @@ void sample_receiver_callback(const base::samples::Sonar& sample, int sample_ind
 {
     printf("Current sample: %d\n", sample_index);
     Context *pContext = reinterpret_cast<Context*>(user_data);
+    pContext->sample_index = sample_index;
 
     if (pContext->annotations.empty() || pContext->annotations[sample_index].empty()) {
         printf("There is no annotation for sample: %d\n", sample_index);
@@ -814,6 +866,11 @@ void exec_samples(Context& context)
     if (context.dataset_info.extraction_settings().training_samples) {
         for (size_t i=0; i<entries.size(); i++) {
             load_log_annotation(context, entries[i]);
+            context.log_basename = boost::filesystem::basename(entries[i].log_filename);
+            std::string folder_type = file_join(context.dataset_info.extraction_settings().class_name, context.log_basename);
+            std::string output_folder = get_folder(context.dataset_info, kExtractionFoldersFinal, folder_type);
+            if (!create_directory(output_folder))
+                std::cout << "Failed to create the folder " << output_folder << std::endl;
             common::exec_training_samples_from_dataset_entry(entries[i], sample_receiver_callback, &context);
         }
     }
@@ -827,7 +884,6 @@ void exec_samples(Context& context)
     if (!context.dataset_info.extraction_settings().extract_target_bbox)
         save_annotation_files(context);
 }
-
 
 int main(int argc, char **argv)
 {
