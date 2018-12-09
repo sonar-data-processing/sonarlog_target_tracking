@@ -144,7 +144,7 @@ if (COMPILE_PREPROCESSING)
         sonarlog-preprocessing
         examples/preprocessing.cpp
         ${SOURCES}
-    )         
+    )
 
     target_link_libraries (
         sonarlog-preprocessing
@@ -230,6 +230,7 @@ endif(NEAREST_NEIGHBOOR)
 add_executable (
     sonargen
     examples/sonargen.cpp
+    ${SOURCES}
 )
 
 target_link_libraries (

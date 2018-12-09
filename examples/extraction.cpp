@@ -686,8 +686,12 @@ void extract_sample_bbox(
     bool save_options[kExtractionFoldersFinal];
     load_save_options(context.dataset_info.extraction_settings(), save_options);
 
-    cv::Rect bbox = image_util::bounding_rect(gt_mask);
     cv::RotatedRect rbbox = load_rotated_rect(annotation);
+
+    // ground truth mask
+    cv::Mat1b rbbox_mask = cv::Mat1b::zeros(gt_mask.size());
+    sonar_processing::image_util::create_min_area_rect_mask(annotation, rbbox_mask);
+    cv::Rect bbox = image_util::bounding_rect(rbbox_mask);
 
     std::string folder_type = file_join(class_name, context.log_basename);
 
@@ -695,12 +699,13 @@ void extract_sample_bbox(
     cv::cvtColor(source_image, canvas, cv::COLOR_GRAY2BGR);
     cv::rectangle(canvas, bbox, cv::Scalar(0, 255, 0), 3);
     image_util::draw_rotated_rect(canvas, cv::Scalar(255, 0, 0), rbbox);
+    image_util::draw_contour(canvas, canvas, cv::Scalar(0, 0, 255), annotation);
 
     cv::Point2f pts[4];
     rbbox.points( pts );
     char buff[64];
-    snprintf(buff,64, "%d", (int)rbbox.angle);
-    draw_text(canvas, cv::Point(pts[0].x, pts[0].y), buff);
+    // snprintf(buff,64, "%d", (int)rbbox.angle);
+    // draw_text(canvas, cv::Point(pts[0].x, pts[0].y), buff);
 
     cv::imshow("canvas", canvas);
     cv::waitKey(15);
@@ -723,8 +728,12 @@ void extract_sample_bbox(
     cv::Mat flip_gt_mask;
     cv::flip(gt_mask, flip_gt_mask, 1);
 
-    cv::Rect flip_bbox = image_util::bounding_rect(flip_gt_mask);
+    // ground truth mask
     cv::RotatedRect flip_rbbox = load_rotated_rect_from_mask(flip_gt_mask);
+    cv::Mat1b flip_rbbox_mask = cv::Mat1b::zeros(flip_gt_mask.size());
+    sonar_processing::image_util::create_min_area_rect_mask(
+      preprocessing::find_biggest_contour(flip_gt_mask), flip_rbbox_mask);
+    cv::Rect flip_bbox = image_util::bounding_rect(flip_rbbox_mask);
 
     cv::Mat flip_canvas;
     cv::cvtColor(flip_source_image, flip_canvas, cv::COLOR_GRAY2BGR);
@@ -736,7 +745,7 @@ void extract_sample_bbox(
     draw_text(flip_canvas, cv::Point(pts[0].x, pts[0].y), buff);
 
     cv::imshow("flip_canvas", flip_canvas);
-    cv::waitKey(15);
+    cv::waitKey();
 
     cv::Mat flip_images[kExtractionFoldersFinal];
     for (size_t k = 0; k < kExtractionFoldersFinal; k++) {
